@@ -1,0 +1,7 @@
+# Renv riippuvuusskannauksesta pois jätettävät kansiot:
+/data/
+/output/
+.git/
+.gitignore
+.gitattributes
+README.md

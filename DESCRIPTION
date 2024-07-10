@@ -1,0 +1,42 @@
+Package: pv-katsaus-kartta
+Title: What the Package Does (One Line, Title Case)
+Version: 0.0.0.9000
+Authors@R: c(
+    person(
+        "Pietari", "Pöykkö",
+        email = "pietari.poykko@syke.fi",
+        role = c("aut", "cre"),
+        comment = c(ORCID = "0009-0000-1214-5336")),
+    person(
+        "Sami", "Soosalu",
+        email = "example@example.com,
+        role = c("aut", "cre")),
+    person(
+        "Suomen ympäristökeskus, Finnish Environment Institute", "Syke",
+        role = c("cph", "fnd")))
+Description: What the package does (one paragraph).
+URL: https://github.com/ppoyk/pv-katsaus-kartta
+BugReports: https://github.com/ppoyk/pv-katsaus-kartta/issues
+License: NA
+Depends:
+    rmarkdown (>= 2.23),
+    ggplot2 (>= 3.4.2),
+    ggrepel (>= 0.9.3),
+    rnaturalearth (>= 1.0.0),
+    rnaturalearthdata (>= 1.0.0),
+    ragg (>= 1.2.5)
+Imports:
+    DBI (>= 1.1.3),
+    dplyr (>= 1.1.0),
+    here (>= 1.0.1),
+    odbc (>= 1.3.5),
+    renv (>= 1.0.0),
+    yaml (>= 2.3.7),
+    stringr (>= 1.4.0),
+    data.table (>= 1.14.0),
+    remotes (>= 2.0.0),
+    taskscheduleR (>= 1.0),
+    this.path (>= 2.0.0)
+Suggests:
+    testthis
+Encoding: UTF-8
