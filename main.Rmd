@@ -1,0 +1,395 @@
+---
+title: "Pohjaveden taustaseuranta-asemien kuvaajat ja kartta"
+output: NULL
+---
+
+Tähän on koostettu kaikki pohjavesitilannekatsaukseen käytettävät koodit. Kunhan tämä on oikeassa kansiorakenteessa ja VPN-yhteyden päässä, pitäisi koko koodi pystyä ajamaan. Lopputuloksena pitäisi olla kuvaajat eri asemilta ja karttakuvia.
+
+ENSIMMÄISTÄ KERTAA KÄYNNISTETTÄESSÄ SYÖTÄ renv::restore() KONSOLIIN, jos renv ei aktivoidu muuten !
+
+MUISTA SULKEA projektin käyttö (oikea yläkulma) kun alat tekemään muita asioita RStudiossa !
+
+```{r valmistelut, message = FALSE}
+
+# Lataa kirjastot (kirjastojen asennus hoituu {renv} kautta)
+
+# Juurikansion määrittäminen muuttujaan
+if (!requireNamespace("here", quietly = TRUE)) {
+    stop("Package \"here\" must be installed to execute.", call. = FALSE)
+}
+here::i_am("main.Rmd")
+root <- here::here()
+
+# Aseta muuttujat pääkansioiden poluille
+D <- list(
+  data     = file.path(root, "data"),
+  koodi    = file.path(root, "R"),
+  secrets  = file.path(root, "data", "secrets"))
+
+# Asetetaan tulosten tallennuskansio ajoargumentin "verkkolevytallennus" mukaan
+if ("verkkolevytallennus" %in% commandArgs() && dir.exists("M:/")) {
+  D[["output"]] <- file.path(readLines(file.path(D$secrets,"output_verkkolevy.txt")))
+} else {
+  D[["output"]] <- file.path(root, "output")
+}
+# Pyyhitään edelliset kuvaajat, jos niin määritelty
+if ("clean_output" %in% commandArgs()) {
+  unlink(paste0(D$output,"/*"), recursive = T)
+}
+
+# Aja funktiot kansiosta ympäristöön
+list.files(file.path(D$koodi, "funktiot"), full.names = TRUE) |>
+  sapply(source) |> invisible() # Lataa funktiot
+
+# Tarkistetaan annetut kansiot
+capture.output(lapply(D, check_dir, tilde = root, ensure = T)) |> invisible()
+# Tarkistetaan tietokantaan yhdistämisen tiedot
+check_db_info(file.path(D$secrets,"db_info.yaml"))
+
+
+library("rnaturalearth")
+library("rnaturalearthdata")
+# library("sf")
+library("ggrepel")
+library("ggplot2")
+library("ragg")
+if (!"rnaturalearthhires" %in% installed.packages()) {
+    remotes::install_github("ropensci/rnaturalearthhires")
+  }
+
+# Luodaan aikaleimatiedosto kun skripti aloitettu
+writeLines(c("Kuvaajien luonnin skripti aloitettu:",
+             paste(weekdays(Sys.time(), abbreviate=F), as.character(Sys.time()))),
+             con = file.path(D$output, "KUVIEN_SKRIPTI_ALOITETTU.txt"))
+
+```
+
+
+```{r hae-lahtotiedot}
+
+# Haetaan manuaalit ja automaatit yhdistävä linkkitaulu (suoraan tietokannasta)
+ltaulu <- DBI::dbGetQuery(
+  .connect_db(D$secrets),
+  paste(
+    readLines(file.path(D$secrets,"SQL","PaikkaAutomaattiManuaali.txt")),#Query from file
+    collapse = " "))
+
+# Haetaan pv-alueiden tiedot
+pvalueet <-  DBI::dbGetQuery(
+  .connect_db(D$secrets),
+  paste(
+    readLines(file.path(D$secrets,"SQL","PohjavesiAlue.txt")),#Query from file
+    collapse = " "))
+
+# Hae kaikki paikat jotka linkkitaulussa
+paikka <- DBI::dbGetQuery(
+  .connect_db(D$secrets),
+  stringr::str_glue(
+  paste(readLines(file.path(D$secrets,"SQL","Paikka.txt")),#Query from file
+        collapse = " "),
+  paikka_idt = paste(c(ltaulu$AutomaattiPaikka_Id,ltaulu$ManuaaliPaikka_Id),collapse = ","))
+  )
+paikka$KoordErLat <- gsub("\\,", "\\.", paikka$KoordErLat)
+paikka$KoordErLong <- gsub("\\,", "\\.", paikka$KoordErLong)
+# Poista tunnuksista kautta-merkit ja korvaa viivalla
+paikka$Tunnus <- gsub("/","-", paikka$Tunnus)
+# Trimmaa tunnukset ja nimet
+for (s in c("Tunnus","Nimi")) paikka[[s]] <- trimws(paikka[[s]], which="both")
+rm(s)
+
+# Hae kaikki pinnankorkeudet linkkitaulun kaikilta paikoilta
+korkeus <- DBI::dbGetQuery(
+  .connect_db(D$secrets),
+  stringr::str_glue(
+    paste(readLines(file.path(D$secrets,"SQL","Korkeus.txt")),
+          collapse = " "),
+    tietokanta = yaml::yaml.load_file(file.path(D$secrets,"db_info.yaml"))[["tietokanta"]],
+    paikka_idt = paste(c(ltaulu$AutomaattiPaikka_Id,ltaulu$ManuaaliPaikka_Id),collapse = ","))
+  )
+
+
+```
+
+
+```{r luokittele-pvalueet}
+# Luokittele alueet pieniin, keskikokoisiin ja suuriin
+
+# Määrittele luokittelu omassa muuttujassaan
+pv_alue_lkt <- list(levels = c(1,2,3),
+                    labels = c("Pieni","Keskikoko","Suuri"))
+
+pvalueet[["kokoluokka"]] <- NA # Luo pohjavesialueille luokittelun sarake
+pvalueet$kokoluokka <- factor(pvalueet$kokoluokka,
+                              levels = pv_alue_lkt$levels,
+                              labels = pv_alue_lkt$labels,
+                              ordered = T)
+
+# Määrittele kriteerit eri luokitteluille [km2]
+pien_kesk_lim <- 0.1
+kesk_suur_lim <- 3
+
+# Visualisoi eri kokoluokkien asettuminen jakaumalle (NAt -2.5)
+jakauma <- replace(
+  pvalueet$PinalaMuodAlue,
+  is.na(pvalueet$PinalaMuodAlue) | pvalueet$PinalaMuodAlue == 0,  -2.5)
+jakauma[jakauma > 0] <- log10(jakauma[jakauma > 0]) #Take log where possible
+hist(jakauma, breaks=50); abline(v=log10(c(pien_kesk_lim, kesk_suur_lim)), lwd=2)
+
+for (i in 1:nrow(pvalueet)) {
+  koko <- pvalueet[i,"PinalaMuodAlue"]
+  muoto <- pvalueet[i, "AlueMuoto"]
+  
+  onpieni <- koko < pien_kesk_lim | is.na(koko) | muoto=="Piste"
+  if (isTRUE(onpieni)) {
+    pvalueet[i,"kokoluokka"] <- "Pieni"
+  } else if (pien_kesk_lim <= koko && koko <= kesk_suur_lim) {
+    pvalueet[i,"kokoluokka"] <- "Keskikoko"
+  } else if (koko > kesk_suur_lim) {
+    pvalueet[i,"kokoluokka"] <- "Suuri"
+  }
+}
+rm(i, koko, muoto, onpieni)
+rm(pien_kesk_lim, kesk_suur_lim, jakauma)
+stopifnot(all(!is.na(pvalueet$kokoluokka)))
+
+
+
+# Vie luokittelu havaintopaikoille
+paikka[["pvalue_kokoluokka"]] <- NA # Aluksi luo pv-alueen luokittelun sarake
+paikka$pvalue_kokoluokka <- factor(paikka$pvalue_kokoluokka,
+                                   levels = pv_alue_lkt$levels,
+                                   labels = pv_alue_lkt$labels)
+# Aja alueiden luokittelut paikoille
+for (i in 1:nrow(paikka)) {
+  if (is.na(paikka[i, "PohjavesiAlue_Id"])) {
+    #Huomioi jos aluetta ei ole määritetty paikalle
+    paikka[i, "pvalue_kokoluokka"] <- "Pieni"
+  } else {
+    paikka[i, "pvalue_kokoluokka"] <-
+      pvalueet[pvalueet$PohjavesiAlue_Id %in% paikka[i,"PohjavesiAlue_Id"], "kokoluokka"]
+  }
+}
+rm(i)
+
+```
+
+```{r pvesi_funktio_ajo, message = FALSE}
+koonti <- data.frame()
+save_path_pv <- file.path(D$output, "kuvaajat")
+
+ajopvm <- Sys.Date()
+
+# Valmistele koontitaulukko oikean kokoiseksi (nopeuttaa huomattavasti)
+koonti <- data.frame(
+  matrix(
+    NA,
+    ncol = length(names(pv_funktio(ltaulu[1,1],ltaulu[1,2],ajopvm,c(1990,2020),tempdir()))),
+    nrow = nrow(ltaulu)
+    )
+  )
+
+for (i in 1:nrow(ltaulu)) {
+  m_id <- ltaulu[i, "ManuaaliPaikka_Id"]
+  a_id <- ltaulu[i, "AutomaattiPaikka_Id"]
+  tulos <- pv_funktio(m_id, a_id, latest_date = ajopvm,
+                      ref_vuosi_vali = c(1960,2023),
+                      plot_dir = save_path_pv)
+  if (i %% 20 == 0) print(tulos)
+  koonti[i, ] <- tulos
+}
+colnames(koonti) <- names(tulos)
+rm(ajopvm, i, tulos)
+
+# Tallenna ajon koonti tiedostoon
+koonti <- koonti[order(koonti$Tunnus_a), ]
+koonti$X <- NULL
+write.csv2(koonti, file.path(D$output,"koonti.csv"))
+rm(koonti)
+
+```
+
+```{r pvesi_kartta, message = FALSE}
+# Aseta karttojen tallennuskansio
+kartat_path <- check_dir(D$output,"kartat", ensure = T)
+
+# Luetaan data tiedostosta
+koonti <- read.csv2(file.path(D$output, "koonti.csv"),
+                    header = TRUE, sep=";", dec=".", stringsAsFactors = FALSE)
+# Muutetaan numeerisesti määritetty kokoluokka oikein factoriksi
+koonti[["pvalue_kokoluokka"]] <- factor(koonti$pvalue_kokoluokka,
+                                        levels = pv_alue_lkt$levels,
+                                        labels = pv_alue_lkt$labels)
+# Poistetaan virheelliset rivit
+df <- koonti
+df <- df[!is.na(df$Korkeus...ka), ]
+
+
+# Karttapohjan tuominen
+world <- ne_countries(scale = "large", returnclass = "sf",
+                      country=c("Finland","Russia","Estonia","Aland","Sweden","Norway"))
+# Karttapohjan piirtäminen ja rajaus
+map_fin <- ggplot(data = world) + geom_sf() +
+  coord_sf(xlim = c(19.18, 31.85), ylim = c(59.7, 70.2), expand = FALSE)
+rm(world)
+
+# Määritä kartan plottauksen ja tallennukset vakiofunktiot
+kartat_plot <- function(lon, lat, value, col) {
+  input <- data.frame("lon"=lon, "lat"=lat, "value"=value, "col"=col)
+  leg_size <- 16
+  
+  map_fin + # Plot on top of the map
+  geom_text_repel(data = input,
+                  aes(x = lon, y = lat, colour = col),
+                  label = value,
+                  max.overlaps = Inf, min.segment.length = Inf,
+                  force = 0.28, position = position_jitter()) +
+  scale_colour_manual(
+    values = cols,
+    guide = guide_legend("Tilanne",reverse=T,
+                         override.aes=list(size=leg_size))) +
+  # guides(shape = guide_legend(override.aes=list(size=leg_size))) +
+  theme(legend.position = c(.1,.68),
+        legend.background = element_rect(fill="transparent",color=NA),
+        legend.title = element_text(size = leg_size*2, face="bold"),
+        legend.text = element_text(size = leg_size*2)
+        #,legend.key.size = unit(leg_size/9, "lines")
+        )
+}
+
+kartat_save <- function(plot, tall_nimi,
+                        height = 22, width = 12,  units = "in", dpi = 300,
+                        limitsize = FALSE) {
+  ggsave(tall_nimi, plot,
+         height = height, width = width, units = units, dpi = dpi,
+         limitsize = limitsize)
+}
+
+# Koordinaattien korjaus ja muokkaus oikeaan muotoon + pv_korkeuden muuntaminen senttimetreiksi
+df$Korkeus...ka <- as.numeric(df$Korkeus...ka) * 100
+df$Korkeus...ka <- round(as.numeric(df$Korkeus...ka), digits = 1)
+df$KoordErLong <- as.numeric(df$KoordErLong)
+df$KoordErLat <- as.numeric(df$KoordErLat)
+
+# Varmistetaan, että R-käsittelee numeroina ja plottauksen värien rajojen laskenta
+df$Ka <- as.numeric(df$Ka)
+df$Max <- as.numeric(df$Max)
+df$Min <- as.numeric(df$Min)
+df$Korkeus <- as.numeric(df$Korkeus)
+df$leik_y <- (df$Max - df$Ka) * 0.5 + df$Ka
+df$leik_a <- (df$Ka - df$Min) * 0.5 + df$Min
+df$leik_ak <- (df$Ka - df$Min) * 0.9 + df$Min
+df$leik_yk <- (df$Max - df$Ka) * 0.1 + df$Ka
+df$color <- 0
+
+for (i in 1:nrow(df)) {
+  if (df[i, "Korkeus"] < df[i, "Min"]) {
+    df[i, "color"] <- 1
+  } else if (df[i, "Korkeus"] >= df[i, "Min"] & df[i, "Korkeus"] < df[i, "leik_a"]) {
+    df[i, "color"] <- 2
+  } else if (df[i, "Korkeus"] >= df[i, "leik_a"] & df[i, "Korkeus"] < df[i, "leik_ak"]) {
+    df[i, "color"] <- 3
+  } else if (df[i, "Korkeus"] >= df[i, "leik_ak"] & df[i, "Korkeus"] < df[i, "leik_yk"]) {
+    df[i, "color"] <- 4
+  } else if (df[i, "Korkeus"] >= df[i, "leik_yk"] & df[i, "Korkeus"] < df[i, "leik_y"]) {
+    df[i, "color"] <- 5
+  } else if (df[i, "Korkeus"] >= df[i, "leik_y"] & df[i, "Korkeus"] < df[i, "Max"]) {
+    df[i, "color"] <- 6
+  } else {
+    df[i, "color"] <- 7
+  }
+}
+
+# Poistetaan yli 2 metrin erotuksen asemat kuvasta
+df <- subset(df, abs(df$Korkeus...ka) < 400)
+
+# Tuodaan värit eri numeroille
+df$color <- as.factor(df$color)
+cols <- c("1"="red", "2"="brown4", "3"="darkgoldenrod",
+          "4"="dodgerblue2", "5"="blue", "6"="darkolivegreen", "7"="darkgreen")
+
+# Ensimmäisen kartan plottaus ja tallennus
+plot <- kartat_plot(df$KoordErLong, df$KoordErLat, df$Korkeus...ka, df$color)
+kartat_save(plot, file.path(kartat_path,"kartta_pv.png"))
+
+
+
+# Erotellaan pienet, keskik. ja suuret alueet. Kaikille erillinen plottaus
+df_suuri     <- df[df$pvalue_kokoluokka == "Suuri", ]
+plot <- kartat_plot(df_suuri$KoordErLong, df_suuri$KoordErLat,
+                    df_suuri$Korkeus...ka, df_suuri$color)
+kartat_save(plot, file.path(kartat_path,"kartta_pv_suuri.png"))
+
+df_keskikoko <- df[df$pvalue_kokoluokka == "Keskikoko", ]
+plot <- kartat_plot(df_keskikoko$KoordErLong, df_keskikoko$KoordErLat,
+                    df_keskikoko$Korkeus...ka, df_keskikoko$color)
+kartat_save(plot, file.path(kartat_path,"kartta_pv_keskikoko.png"))
+
+df_pieni     <- df[df$pvalue_kokoluokka == "Pieni", ]
+plot <- kartat_plot(df_pieni$KoordErLong, df_pieni$KoordErLat,
+                    df_pieni$Korkeus...ka, df_pieni$color)
+kartat_save(plot, file.path(kartat_path,"kartta_pv_pieni.png"))
+
+
+
+df$leik_y <- 30
+df$leik_a <- -30
+df$leik_ak <- -10
+df$leik_yk <- 10
+df$color <- 0
+
+for (i in 1:nrow(df)) {
+  if (df[i, "Korkeus...ka"] < -50) {
+    df[i, "color"] <- 1
+  } else if (df[i, "Korkeus...ka"] >= -50 & df[i, "Korkeus...ka"] < df[i, "leik_a"]) {
+    df[i, "color"] <- 2
+  } else if (df[i, "Korkeus...ka"] >= df[i, "leik_a"] & df[i, "Korkeus...ka"] < df[i, "leik_ak"]) {
+    df[i, "color"] <- 3
+  } else if (df[i, "Korkeus...ka"] >= df[i, "leik_ak"] & df[i, "Korkeus...ka"] < df[i, "leik_yk"]) {
+    df[i, "color"] <- 4
+  } else if (df[i, "Korkeus...ka"] >= df[i, "leik_yk"] & df[i, "Korkeus...ka"] < df[i, "leik_y"]) {
+    df[i, "color"] <- 5
+  } else if (df[i, "Korkeus...ka"] >= df[i, "leik_y"] & df[i, "Korkeus...ka"] < 50) {
+    df[i, "color"] <- 6
+  } else {
+    df[i, "color"] <- 7
+  }
+}
+
+# Poistetaan yli 2 metrin erotuksen asemat kuvasta
+df <- subset(df, abs(df$Korkeus...ka) < 400)
+
+# Tuodaan värit eri numeroille
+df$color <- as.factor(df$color)
+
+# Ensimmäisen kartan plottaus ja tallennus
+plot <- kartat_plot(df$KoordErLong, df$KoordErLat, df$Korkeus...ka, df$color)
+kartat_save(plot, file.path(kartat_path,"kartta_pv_cm.png"))
+
+
+# Erotellaan pienet, keskik. ja suuret alueet. Kaikille erillinen plottaus
+df_suuri     <- df[df$pvalue_kokoluokka == "Suuri", ]
+plot <- kartat_plot(df_suuri$KoordErLong, df_suuri$KoordErLat,
+                    df_suuri$Korkeus...ka, df_suuri$color)
+kartat_save(plot, file.path(kartat_path,"kartta_pv_suuri_cm.png"))
+
+df_keskikoko <- df[df$pvalue_kokoluokka == "Keskikoko", ]
+plot <- kartat_plot(df_keskikoko$KoordErLong, df_keskikoko$KoordErLat,
+                    df_keskikoko$Korkeus...ka, df_keskikoko$color)
+kartat_save(plot, file.path(kartat_path,"kartta_pv_keskikoko_cm.png"))
+
+df_pieni     <- df[df$pvalue_kokoluokka == "Pieni", ]
+plot <- kartat_plot(df_pieni$KoordErLong, df_pieni$KoordErLat,
+                    df_pieni$Korkeus...ka, df_pieni$color)
+kartat_save(plot, file.path(kartat_path,"kartta_pv_pieni_cm.png"))
+
+
+```
+
+```{r viimeistely}
+writeLines(c("Kuvaajien piirtokoodi viimeksi suoritettu loppuun:",
+             paste(weekdays(Sys.time()), as.character(Sys.time()))),
+           con = file.path(D$output, "KUVAT_PÄIVITETTY.txt"))
+
+print("Jes, Koodi varmaankin onnistui!")
+```
+
