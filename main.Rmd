@@ -38,7 +38,7 @@ if ("clean_output" %in% commandArgs()) {
 }
 
 # Aja funktiot kansiosta ympäristöön
-list.files(file.path(D$koodi, "funktiot"), full.names = TRUE) |>
+list.files(file.path(D$koodi, "funs"), full.names = TRUE) |>
   sapply(source) |> invisible() # Lataa funktiot
 
 # Tarkistetaan annetut kansiot
