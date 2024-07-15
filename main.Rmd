@@ -307,10 +307,10 @@ df$color <- as.factor(df$color)
 cols <- c("1"="red", "2"="brown4", "3"="darkgoldenrod",
           "4"="dodgerblue2", "5"="blue", "6"="darkolivegreen", "7"="darkgreen")
 
+
 # Ensimmäisen kartan plottaus ja tallennus
 plot <- kartat_plot(df$KoordErLong, df$KoordErLat, df$Korkeus...ka, df$color)
 kartat_save(plot, file.path(kartat_path,"kartta_pv.png"))
-
 
 
 # Erotellaan pienet, keskik. ja suuret alueet. Kaikille erillinen plottaus

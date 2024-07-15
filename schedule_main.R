@@ -1,6 +1,8 @@
 # Tämä skripti on luotu automatisoimaan pohjavesikuvaajien ajo.
 # Tulosten tallennuskansio määrittyy ajoparametrin mukaan ("verkkolevytallennus")
 
+# Previous run result files are wiped from the assigned results-folder by "clean_output"
+
 stop("This file is for interactive use only")
 
 task_name <- "pv-kuvaajat"
@@ -24,3 +26,5 @@ taskscheduleR::taskscheduler_create(
 # To stop the automated schedule:
 taskscheduleR::taskscheduler_stop(task_name)
 
+# To run task now
+taskscheduleR::taskscheduler_runnow(task_name)
