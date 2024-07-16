@@ -1,7 +1,5 @@
 # Tämä skripti on luotu automatisoimaan pohjavesikuvaajien ajo.
-# Tulosten tallennuskansio määrittyy ajoparametrin mukaan ("verkkolevytallennus")
 
-# Previous run result files are wiped from the assigned results-folder by "clean_output"
 
 stop("This file is for interactive use only")
 
@@ -16,6 +14,8 @@ taskscheduleR::taskscheduler_delete(task_name)
 taskscheduleR::taskscheduler_create(
   taskname = task_name,
   rscript = file.path(this.path::this.dir(), "auto.R"),
+  # Output folder set to specific network share folder by "verkkolevytallennus"
+  # Prev result files are wiped from (selected) results-folder by "clean_output"
   rscript_args = c("verkkolevytallennus","clean_output"),
   schedule = "WEEKLY", days = "TUE",
   starttime = "08:15",

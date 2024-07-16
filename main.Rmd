@@ -42,7 +42,7 @@ list.files(file.path(D$koodi, "funs"), full.names = TRUE) |>
   sapply(source) |> invisible() # Lataa funktiot
 
 # Tarkistetaan annetut kansiot
-capture.output(lapply(D, check_dir, tilde = root, ensure = T)) |> invisible()
+capture.output(lapply(D, check_dir, ensure = T)) |> invisible()
 # Tarkistetaan tietokantaan yhdistämisen tiedot
 check_db_info(file.path(D$secrets,"db_info.yaml"))
 

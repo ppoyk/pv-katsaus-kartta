@@ -9,8 +9,8 @@ Sys.setenv(RSTUDIO_PANDOC = "D:/Program Files/RStudio/resources/app/bin/quarto/b
 # to ensure correct project dir
 proj <- this.path::this.dir()
 
-# Run started
-as.character(Sys.time()) 
+# Output run start to logfile
+cat("Run started: ", as.character(Sys.time()),"\n") 
 
 # Ensure libraries
 renv::restore(project = proj)
