@@ -10,7 +10,7 @@ check_dir <- function(..., tilde = NULL, ensure = FALSE) {
     if(file.exists(tilde)) {
       # Jos juurikansio on määritelty, käytetään polun lyhyttä muotoa, eli
       # trimmataan alusta juuriosa pois (tällöin printissä myös parempi muotoilu)
-      dir <- substring(dir, nchar(tilde) + 2, nchar(dir))
+      dir <- gsub(paste0(tilde,"/"), "", dir)
     } else stop(paste("File path shortening not found:",tilde))
   }
   
