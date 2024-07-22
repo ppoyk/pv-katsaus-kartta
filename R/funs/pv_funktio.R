@@ -3,8 +3,11 @@
 pv_funktio <- function(m_id, a_id, period, ref_vuosi_vali, plot_dir) {
   # period = kuvaajien aikaväli (c(alku,loppu))
   # m_id & a_id = tarkasteltavan manuaali-automaatti putkiparin IDt
-  # Debug # k <- i
-          # latest_date <- Sys.Date()
+  # Debug:
+  # a_id <- ltaulu[20,1]; m_id <- ltaulu[20,2]
+  # period <- c(as.Date("2022-01-01"), Sys.Date())
+  # ref_vuosi_vali <- c(1980, 2020)
+  # plot_dir <- file.path(D$output,"test")
   
   stopifnot(is.numeric(c(a_id,m_id)),
             is_date(period), length(period)==2, period[[1]]<period[[2]])
