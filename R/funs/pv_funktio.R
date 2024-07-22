@@ -77,28 +77,29 @@ pv_funktio <- function(m_id, a_id, period, ref_vuosi_vali, plot_dir) {
   # Aineistojen yhdistys (AM data & man.mittausten kk-statsit vertailujaksolta)
   yht_1 <- base::merge(pdata_a, ref_df, by = "month", all = TRUE)
   
-  # Aineistojen plottaus
-  # Jos kuukausittaiset referenssiarvot on voitu laskea, piirrä ne
-  if (all(!is.na(df[[1]]))) {
-    plot <- ggplot(data = yht_1) +
-      geom_line(aes(x = yht_1$Aika1, y = yht_1$Korkeus.x)) +
-      geom_step(aes(x = yht_1$Aika1, y = yht_1$mean, colour = "blue")) +
-      geom_step(aes(x = yht_1$Aika1, y = yht_1$min, colour = "red")) +
-      geom_step(aes(x = yht_1$Aika1, y = yht_1$max, colour = "red")) +
-      geom_point(aes(x = yht_1$Aika1, y = yht_1$Korkeus.y)) +
-      ggtitle(paste(paikka_a$Tunnus, paikka_m$Tunnus, vertailujakso_title)) +
-      scale_x_date(date_breaks = "month") +
-      theme(axis.text.x = element_text(angle = -90, vjust = 0.5))
-    # plot(plot)
-  # Piirrä ilman tilastollisiä käyriä jos niitä ei voinut laskea
-  } else {
-    plot <- ggplot(data = yht_1) +
-      geom_line(aes(x = yht_1$Aika1, y = yht_1$Korkeus.x)) +
-      geom_point(aes(x = yht_1$Aika1, y = yht_1$Korkeus.y)) +
-      ggtitle(paste(paikka_a$Tunnus, paikka_m$Tunnus, vertailujakso_title)) +
-      scale_x_date(date_breaks = "month") +
-      theme(axis.text.x = element_text(angle = -90, vjust = 0.5))
-  }
+  
+  # Tee datasta plotti
+  plot <- ggplot(data = yht_1) +
+    # Automaatin käyrä
+    geom_line(aes(x = Aika, y = Korkeus)) +
+    # Lisää ehdolliset tasot plottiin (eli plotataan vain jos voidaan)
+    list(
+      # Referenssiaikavälin tilastoarvot
+      if (!all(is.na(yht_1$ref_mean))) {
+        list(
+         geom_step(aes(x = Aika, y = ref_mean), colour = "dodgerblue"),
+         geom_step(aes(x = Aika, y = ref_min), colour = "red"),
+         geom_step(aes(x = Aika, y = ref_max), colour = "red")
+        )
+      },
+      # Manuaalimittausten pisteet
+      if (nrow(pdata_m) > 0) {
+        geom_point(data=pdata_m, aes(x = Aika, y = Korkeus))
+        }
+    ) +
+    ggtitle(paste(paikka_a$Tunnus, paikka_m$Tunnus, vertailujakso_title)) +
+    scale_x_datetime(date_breaks = "month") +
+    theme(axis.text.x = element_text(angle = -90, vjust = 0.5))
   
   
   # # Tarkista manuaali ja autom paikkojen kokoluokkien täsmääminen
