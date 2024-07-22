@@ -1,16 +1,15 @@
 ---
 title: "Pohjaveden taustaseuranta-asemien kuvaajat ja kartta"
-output: NULL
+output: 
 ---
 
 Tähän on koostettu kaikki pohjavesitilannekatsaukseen käytettävät koodit. Kunhan tämä on oikeassa kansiorakenteessa ja VPN-yhteyden päässä, pitäisi koko koodi pystyä ajamaan. Lopputuloksena pitäisi olla kuvaajat eri asemilta ja karttakuvia.
 
-ENSIMMÄISTÄ KERTAA KÄYNNISTETTÄESSÄ SYÖTÄ renv::restore() KONSOLIIN, jos renv ei aktivoidu muuten !
+Syötä renv::restore() konsoliin jos renv ei aktivoidu muuten !
 
 MUISTA SULKEA projektin käyttö (oikea yläkulma) kun alat tekemään muita asioita RStudiossa !
 
 ```{r valmistelut, message = FALSE}
-
 # Lataa kirjastot (kirjastojen asennus hoituu {renv} kautta)
 
 # Juurikansion määrittäminen muuttujaan
@@ -133,7 +132,7 @@ jakauma <- replace(
   pvalueet$PinalaMuodAlue,
   is.na(pvalueet$PinalaMuodAlue) | pvalueet$PinalaMuodAlue == 0,  -2.5)
 jakauma[jakauma > 0] <- log10(jakauma[jakauma > 0]) #Take log where possible
-hist(jakauma, breaks=50); abline(v=log10(c(pien_kesk_lim, kesk_suur_lim)), lwd=2)
+hist(jakauma, breaks=50, xlab="Log pvalue koko"); abline(v=log10(c(pien_kesk_lim, kesk_suur_lim)), lwd=2)
 
 for (i in 1:nrow(pvalueet)) {
   koko <- pvalueet[i,"PinalaMuodAlue"]
@@ -174,8 +173,7 @@ rm(i)
 ```
 
 ```{r pvesi_funktio_ajo, message = FALSE}
-koonti <- data.frame()
-save_path_pv <- file.path(D$output, "kuvaajat")
+save_path_pv <- file.path(D$output, "kuvaajat") # Määritä kuvaajien tallennuspolku
 
 # Aseta kuvaajien piirtoväli
 ajopvm <- Sys.Date()
