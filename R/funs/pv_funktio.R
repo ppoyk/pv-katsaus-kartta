@@ -1,6 +1,7 @@
 # Pohjavesidatan piirron pääfunktio
-pv_funktio <- function(m_id, a_id, latest_date, ref_vuosi_vali, plot_dir) {
-  # latest_date = piirrä dataa tästä pvstä taakesepäin
+
+pv_funktio <- function(m_id, a_id, period, ref_vuosi_vali, plot_dir) {
+  # period = kuvaajien aikaväli (c(alku,loppu))
   # m_id & a_id = tarkasteltavan manuaali-automaatti putkiparin IDt
   # Debug # k <- i
           # latest_date <- Sys.Date()
@@ -20,9 +21,15 @@ pv_funktio <- function(m_id, a_id, latest_date, ref_vuosi_vali, plot_dir) {
   
   
   seq_1 <- data.frame()
+  # Aseta piirrettävän jakson aikaväli
+  start <- as.POSIXct(period[[1]])
+  # Aseta piirrettävän kuvaajan oikean reunan pvm
+  end <- as.POSIXct(period[[2]])
   
-  end <- as.POSIXct(latest_date) #+ as.difftime(14, units="days")
-  start <- end - as.difftime(400, units = "days")
+  # Rajaa KAIKISTA man.mittauksista vertailujakso. Näytetään plottien taustalla
+  pdata_m_ref <- subset(pdata_m,
+                        data.table::year(pdata_m$Aika) >= ref_vuosi_vali[[1]] &
+                          data.table::year(pdata_m$Aika) <= ref_vuosi_vali[[2]])
   
   seq <- seq(from = start, by = 60*60*24, to = end)
   day <- as.numeric(format(as.POSIXct(seq), format = "%d"))

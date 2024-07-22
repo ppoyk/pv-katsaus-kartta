@@ -177,13 +177,17 @@ rm(i)
 koonti <- data.frame()
 save_path_pv <- file.path(D$output, "kuvaajat")
 
+# Aseta kuvaajien piirtoväli
 ajopvm <- Sys.Date()
+kuv_alkupvm <- ajopvm - as.difftime(365, units="days")#Kuvaajien alku pvm (taaksepäin)
+jakso <- c(kuv_alkupvm, ajopvm)
+rm(ajopvm, kuv_alkupvm)
+
 
 # Valmistele koontitaulukko oikean kokoiseksi (nopeuttaa huomattavasti)
 koonti <- data.frame(
-  matrix(
-    NA,
-    ncol = length(names(pv_funktio(ltaulu[1,1],ltaulu[1,2],ajopvm,c(1990,2020),tempdir()))),
+  matrix(NA,
+    ncol = length(pv_funktio(ltaulu[1,2],ltaulu[1,1],jakso,c(1990,2020),tempdir())),
     nrow = nrow(ltaulu)
     )
   )
@@ -191,8 +195,8 @@ koonti <- data.frame(
 for (i in 1:nrow(ltaulu)) {
   m_id <- ltaulu[i, "ManuaaliPaikka_Id"]
   a_id <- ltaulu[i, "AutomaattiPaikka_Id"]
-  tulos <- pv_funktio(m_id, a_id, latest_date = ajopvm,
-                      ref_vuosi_vali = c(1960,2023),
+  tulos <- pv_funktio(m_id, a_id, jakso,
+                      ref_vuosi_vali = c(1960,2020),
                       plot_dir = save_path_pv)
   if (i %% 20 == 0) print(tulos)
   koonti[i, ] <- tulos
