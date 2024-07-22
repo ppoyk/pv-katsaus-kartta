@@ -146,20 +146,21 @@ pv_funktio <- function(m_id, a_id, period, ref_vuosi_vali, plot_dir) {
   pval_kokolk <- paikka_m$pvalue_kokoluokka # LUOTETAAN TOISTAISEKSI MANUAALIIN
   
   # Aseta alakansiot ja tiedostonimet alueen koon perusteella
-  if (pval_kokolk == "Pieni") {
-    tall_nimi_1 <- file.path(plot_dir, "pieni", paste0(paikka_a$Tunnus, "_pv_pieni.png"))
-    tall_nimi_2 <- file.path(plot_dir, paste0(paikka_a$Tunnus, "_pv_pieni.png"))
-  } else if (pval_kokolk == "Keskikoko") {
-    tall_nimi_1 <- file.path(plot_dir, "keskikoko", paste0(paikka_a$Tunnus, "_pv_keskikoko.png"))
-    tall_nimi_2 <- file.path(plot_dir, paste0(paikka_a$Tunnus, "_pv_keskikoko.png"))
-  } else if (pval_kokolk == "Suuri") {
-    tall_nimi_1 <- file.path(plot_dir, "suuri", paste0(paikka_a$Tunnus, "_pv_suuri.png"))
-    tall_nimi_2 <- file.path(plot_dir, paste0(paikka_a$Tunnus, "_pv_suuri.png"))
-  } else stop(paste(
-    "Paikan",ltaulu[k,"ManuaaliPaikka_Id"],"pv-alueen kokoluokkaa ei ole määritelty"))
+  tall_nimi_alakans <- switch(as.character(pval_kokolk),
+    "Pieni"     = f.path(plot_dir,"pieni",    p0(paikka_a$Tunnus,".png")),
+    "Keskikoko" = f.path(plot_dir,"keskikoko",p0(paikka_a$Tunnus,".png")),
+    "Suuri"     = f.path(plot_dir,"suuri",    p0(paikka_a$Tunnus,".png")),
+    stop(p("Virheellinen PValueen kokoluokka:",pval_kokolk,"\t-",paikka_m,m_id))
+  )
+  tall_nimi_all     <- switch(as.character(pval_kokolk),
+    "Pieni"     = f.path(plot_dir, p0(paikka_a$Tunnus, "_pv_pieni.png")),
+    "Keskikoko" = f.path(plot_dir, p0(paikka_a$Tunnus, "_pv_keskikoko.png")),
+    "Suuri"     = f.path(plot_dir, p0(paikka_a$Tunnus, "_pv_suuri.png")),
+    stop(p("Virheellinen PValueen kokoluokka:",pval_kokolk,"\t-",paikka_m,m_id))
+  )
   
-  ggsave(tall_nimi_1, plot, create.dir=T)
-  ggsave(tall_nimi_2, plot, create.dir=T)
+  ggsave(tall_nimi_alakans, plot, create.dir = T)
+  ggsave(tall_nimi_all,     plot, create.dir = T)
   
   yht_1 <- yht_1[!is.na(yht_1$Korkeus.x), ]
   yht_1 <- yht_1[order(yht_1$date, decreasing = TRUE),]
