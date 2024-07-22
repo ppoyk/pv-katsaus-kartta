@@ -203,7 +203,7 @@ colnames(koonti) <- names(tulos)
 rm(ajopvm, i, tulos)
 
 # Tallenna ajon koonti tiedostoon
-koonti <- koonti[order(koonti$Tunnus_a), ]
+koonti <- koonti[order(koonti$asema_tunnus), ]
 koonti$X <- NULL
 write.csv2(koonti, file.path(D$output,"koonti.csv"))
 rm(koonti)
