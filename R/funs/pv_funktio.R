@@ -61,32 +61,13 @@ pv_funktio <- function(m_id, a_id, period, ref_vuosi_vali, plot_dir) {
     
     pdata_m_ref$pvm <- format(as.POSIXct(pdata_m_ref$Aika), format = "%Y-%m-%d")
     
-    # Laske jokaiselle vertailujakson kuukaudelle tilastoarvot (min, max, keski)
-    kk_ref_stats <- data.frame()
-    for (i in unique(pdata_m_ref$vuosi)) {
-      for (j in unique(pdata_m_ref$month)) {
-        yksi_kk <- subset(pdata_m_ref, pdata_m_ref$vuosi == i & pdata_m_ref$month == j)
-        luku <- mean(as.numeric(yksi_kk$Korkeus), na.rm=T)
-        luku2 <- min(as.numeric(yksi_kk$Korkeus), na.rm=T)
-        luku3 <- max(as.numeric(yksi_kk$Korkeus), na.rm=T)
-        yksi_kk_stats <- c(i, j, luku, luku2, luku3)
-        kk_ref_stats <- rbind(kk_ref_stats, yksi_kk_stats)
-      }
-    }
-    colnames(kk_ref_stats) <- c("vuosi", "kk", "arvo", "min", "max")
-    kk_ref_stats <- na.omit(kk_ref_stats)
-    
-    # Laske kuukausikeskiarvot yksittäisten kuukausien tilastoista
-    df <- data.frame()
-    for (i in unique(kk_ref_stats$kk)) {
-      keski <- mean(kk_ref_stats[kk_ref_stats$kk == i, "arvo"], na.rm=T)
-      min <- min(kk_ref_stats[kk_ref_stats$kk == i, "arvo"], na.rm=T)
-      max <- max(kk_ref_stats[kk_ref_stats$kk == i, "arvo"], na.rm=T)
-      plus <- c(i, keski, min, max)
-      
-      df <- rbind(df, plus)
-    }
-    colnames(df) <- c("kk", "mean", "min", "max")
+    # Laske kuukausiarvot päivittäisistä arvoista. Koottu yhteen tauluun.
+    ref_df <- data.frame(
+      aggregate(Korkeus ~ month, data=pdata_m_ref, FUN="mean", drop=F),
+      aggregate(Korkeus ~ month, data=pdata_m_ref, FUN="min", drop=F)[,-1],
+      aggregate(Korkeus ~ month, data=pdata_m_ref, FUN="max", drop=F)[,-1]
+    )
+    colnames(ref_df) <- c("month", "ref_mean", "ref_min", "ref_max")
     
   } else {
     vertailujakso_title <- paste("Ei vertailudataa jaksolta",
