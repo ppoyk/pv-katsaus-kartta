@@ -11,6 +11,7 @@ pv_funktio <- function(m_id, a_id, period, ref_vuosi_vali, plot_dir) {
   
   stopifnot(is.numeric(c(a_id,m_id)),
             is_date(period), length(period)==2, period[[1]]<period[[2]])
+  requireNamespace("ggplot2"); requireNamespace("data.table")
   
   # Hae paikkojen tiedot
   paikka_a <- paikka[paikka$Paikka_Id == a_id, ]
@@ -28,41 +29,33 @@ pv_funktio <- function(m_id, a_id, period, ref_vuosi_vali, plot_dir) {
   
   # Aseta piirrettävän jakson aikaväli
   start <- as.POSIXct(period[[1]])
-  # Aseta piirrettävän kuvaajan oikean reunan pvm
   end <- as.POSIXct(period[[2]])
 
   
-  # Käsitellään manuaalimittaukset
-  pdata_m$vuosi <- data.table::year(pdata_m$Aika)
+  # Muutetaan man.mittausten kuukausi factoriksi (referenssidatan laskentaa varten)
   pdata_m$month <- data.table::month(pdata_m$Aika) |> factor(levels = c(1:12))
-  pdata_m$day <- data.table::mday(pdata_m$Aika)
-  
-  # Rajaa KAIKISTA man.mittauksista vertailujakso. Näytetään plottien taustalla
+
+  # Rajaa KAIKISTA man.mittauksista vertailujakso, josta lasketaan tilastoluvut
   pdata_m_ref <- subset(pdata_m,
                         data.table::year(pdata_m$Aika) >= ref_vuosi_vali[[1]] &
                           data.table::year(pdata_m$Aika) <= ref_vuosi_vali[[2]])
   
-  # Rajaa manuaalimittaukset plottausvälille
+  # Rajaa manuaalimittaukset plottausvälille (ref.datan oton jälkeen)
   pdata_m <- subset(pdata_m, pdata_m$Aika >= start & pdata_m$Aika <= end)
   
   
-  #Rajaa automaatin data halutulle aikavälille (myös loppupäästä, yleensä ei päde)
+  #Rajaa automaatin data plottausvälille (myös loppupäästä, yleensä ei päde)
   pdata_a <- subset(pdata_a, pdata_a$Aika >= start & pdata_a$Aika <= end)
-  # TODO Tarvitaanko tätä ??
-  pdata_a$vuosi <- data.table::year(pdata_a$Aika)
+  # Laske tarvittavat lisäsarakkeet ajalle
   pdata_a$month <- data.table::month(pdata_a$Aika)
-  pdata_a$day <- data.table::mday(pdata_a$Aika)
-  pdata_a$pvm <- format(as.POSIXct(pdata_a$Aika, format="%Y-%m-%d"), format="%Y-%m-%d")
   
 
   # Tarkista että löytyykö vertailujaksolta ollenkaan dataa
   if (nrow(pdata_m_ref) > 0) {
-    # Hae vielä vertailuvuosien jakso datasta plottauksen tekstejä varten
-    min_t <- min(pdata_m_ref$vuosi)
-    max_t <- max(pdata_m_ref$vuosi)
+    # Hae toteutunut vertailuvuosien jakso plottauksen tekstejä varten
+    min_t <- min(data.table::year(pdata_m$Aika))
+    max_t <- max(data.table::year(pdata_m$Aika))
     vertailujakso_title <- paste("Vertailujakso",min_t,"-",max_t)
-    
-    pdata_m_ref$pvm <- format(as.POSIXct(pdata_m_ref$Aika), format = "%Y-%m-%d")
     
     # Laske kuukausiarvot päivittäisistä arvoista. Koottu yhteen tauluun.
     ref_df <- data.frame(
@@ -81,7 +74,7 @@ pv_funktio <- function(m_id, a_id, period, ref_vuosi_vali, plot_dir) {
   }
   
   
-  # Aineistojen yhdistys
+  # Aineistojen yhdistys (AM data & man.mittausten kk-statsit vertailujaksolta)
   yht_1 <- base::merge(pdata_a, ref_df, by = "month", all = TRUE)
   
   # Aineistojen plottaus
@@ -134,7 +127,9 @@ pv_funktio <- function(m_id, a_id, period, ref_vuosi_vali, plot_dir) {
   ggsave(tall_nimi_alakans, plot, create.dir = T)
   ggsave(tall_nimi_all,     plot, create.dir = T)
   
+  # Valmistele automaatin data tulostukseen
   yht_1 <- yht_1[!is.na(yht_1$Korkeus.x), ]
+  # Paikan tuorein arvo ylimmäksi
   yht_1 <- yht_1[order(yht_1$Aika, decreasing = TRUE),]
   
   tulostus <- c(
