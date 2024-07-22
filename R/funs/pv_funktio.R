@@ -5,8 +5,11 @@ pv_funktio <- function(m_id, a_id, period, ref_vuosi_vali, plot_dir) {
   # m_id & a_id = tarkasteltavan manuaali-automaatti putkiparin IDt
   # Debug # k <- i
           # latest_date <- Sys.Date()
-  stopifnot(is.numeric(c(a_id,m_id)))
   
+  stopifnot(is.numeric(c(a_id,m_id)),
+            is_date(period), length(period)==2, period[[1]]<period[[2]])
+  
+  # Hae paikkojen tiedot
   paikka_a <- paikka[paikka$Paikka_Id == a_id, ]
   paikka_m <- paikka[paikka$Paikka_Id == m_id, ]
   
@@ -15,7 +18,7 @@ pv_funktio <- function(m_id, a_id, period, ref_vuosi_vali, plot_dir) {
   if (nrow(paikka_m) < 1)
     stop("Linkkitaulun paikkaa ",m_id," ei löydy haetusta paikkojen taulusta")
   
-  
+  # Hae paikkojen korkeusdata
   pdata_a <- korkeus[korkeus$Paikka_Id == paikka_a$Paikka_Id, ]
   pdata_m <- korkeus[korkeus$Paikka_Id == paikka_m$Paikka_Id, ]
   
