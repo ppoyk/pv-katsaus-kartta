@@ -1,6 +1,6 @@
 # Pohjavesidatan piirron pääfunktio
 
-pv_funktio <- function(m_id, a_id, period, ref_vuosi_vali, plot_dir) {
+pv_funktio <- function(m_id, a_id, period, ref_vuosi_vali, plot_dir, noplot=F) {
   # period = kuvaajien aikaväli (c(alku,loppu))
   # m_id & a_id = tarkasteltavan manuaali-automaatti putkiparin IDt
   # Debug:
@@ -93,47 +93,48 @@ pv_funktio <- function(m_id, a_id, period, ref_vuosi_vali, plot_dir) {
   # Aineistojen yhdistys (AM data & man.mittausten kk-statsit vertailujaksolta)
   yht_1 <- base::merge(pdata_a, ref_df, by = "month", all = TRUE)
   
-  
-  # Tee datasta plotti
-  plot <- ggplot(data = yht_1) +
-    # Automaatin käyrä
-    geom_line(aes(x = Aika, y = Korkeus)) +
-    # Lisää ehdolliset tasot plottiin (eli plotataan vain jos voidaan)
-    list(
-      # Referenssiaikavälin tilastoarvot
-      if (!all(is.na(yht_1$ref_mean))) {
-        list(
-         geom_step(aes(x = Aika, y = ref_mean), colour = "dodgerblue"),
-         geom_step(aes(x = Aika, y = ref_min), colour = "red"),
-         geom_step(aes(x = Aika, y = ref_max), colour = "red")
-        )
-      },
-      # Manuaalimittausten pisteet
-      if (nrow(pdata_m) > 0) {
-        geom_point(data=pdata_m, aes(x = Aika, y = Korkeus))
+  # Tee datasta plotti (jos ei ole ohitettu)
+  if (!noplot) {
+    plot <- ggplot(data = yht_1) +
+      # Automaatin käyrä
+      geom_line(aes(x = Aika, y = Korkeus)) +
+      # Lisää ehdolliset tasot plottiin (eli plotataan vain jos voidaan)
+      list(
+        # Referenssiaikavälin tilastoarvot
+        if (!all(is.na(yht_1$ref_mean))) {
+          list(
+           geom_step(aes(x = Aika, y = ref_mean), colour = "dodgerblue"),
+           geom_step(aes(x = Aika, y = ref_min), colour = "red"),
+           geom_step(aes(x = Aika, y = ref_max), colour = "red")
+          )
+        },
+        # Manuaalimittausten pisteet
+        if (nrow(pdata_m) > 0) {
+          geom_point(data = pdata_m, aes(x = Aika, y = Korkeus))
         }
-    ) +
-    ggtitle(paste(paikka_a$Tunnus, paikka_m$Tunnus, vertailujakso_title)) +
-    scale_x_datetime(date_breaks = "month") +
-    theme(axis.text.x = element_text(angle = -90, vjust = 0.5))
+      ) +
+      ggtitle(paste(paikka_a$Tunnus, paikka_m$Tunnus, vertailujakso_title)) +
+      scale_x_datetime(date_breaks = "month") +
+      theme(axis.text.x = element_text(angle = -90, vjust = 0.5))
+    
+    # Aseta alakansiot ja tiedostonimet alueen koon perusteella
+    tall_nimi_alakans <- switch(as.character(pval_kokolk),
+      "Pieni"     = f.path(plot_dir,"pieni",    p0(paikka_a$Tunnus,".png")),
+      "Keskikoko" = f.path(plot_dir,"keskikoko",p0(paikka_a$Tunnus,".png")),
+      "Suuri"     = f.path(plot_dir,"suuri",    p0(paikka_a$Tunnus,".png")),
+      stop(p("Virheellinen PValueen kokoluokka:",pval_kokolk,"\t-",paikka_m,m_id))
+    )
+    tall_nimi_all     <- switch(as.character(pval_kokolk),
+      "Pieni"     = f.path(plot_dir, p0(paikka_a$Tunnus, "_pv_pieni.png")),
+      "Keskikoko" = f.path(plot_dir, p0(paikka_a$Tunnus, "_pv_keskikoko.png")),
+      "Suuri"     = f.path(plot_dir, p0(paikka_a$Tunnus, "_pv_suuri.png")),
+      stop(p("Virheellinen PValueen kokoluokka:",pval_kokolk,"\t-",paikka_m,m_id))
+    )
+    
+    ggsave(tall_nimi_alakans, plot, create.dir = T)
+    ggsave(tall_nimi_all,     plot, create.dir = T)
+  }
   
-  
-  # Aseta alakansiot ja tiedostonimet alueen koon perusteella
-  tall_nimi_alakans <- switch(as.character(pval_kokolk),
-    "Pieni"     = f.path(plot_dir,"pieni",    p0(paikka_a$Tunnus,".png")),
-    "Keskikoko" = f.path(plot_dir,"keskikoko",p0(paikka_a$Tunnus,".png")),
-    "Suuri"     = f.path(plot_dir,"suuri",    p0(paikka_a$Tunnus,".png")),
-    stop(p("Virheellinen PValueen kokoluokka:",pval_kokolk,"\t-",paikka_m,m_id))
-  )
-  tall_nimi_all     <- switch(as.character(pval_kokolk),
-    "Pieni"     = f.path(plot_dir, p0(paikka_a$Tunnus, "_pv_pieni.png")),
-    "Keskikoko" = f.path(plot_dir, p0(paikka_a$Tunnus, "_pv_keskikoko.png")),
-    "Suuri"     = f.path(plot_dir, p0(paikka_a$Tunnus, "_pv_suuri.png")),
-    stop(p("Virheellinen PValueen kokoluokka:",pval_kokolk,"\t-",paikka_m,m_id))
-  )
-  
-  ggsave(tall_nimi_alakans, plot, create.dir = T)
-  ggsave(tall_nimi_all,     plot, create.dir = T)
   
   # Valmistele automaatin data tulostukseen
   yht_1 <- yht_1[!is.na(yht_1$Korkeus.x), ]
