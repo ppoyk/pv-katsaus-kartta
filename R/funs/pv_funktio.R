@@ -17,6 +17,16 @@ pv_funktio <- function(m_id, a_id, period, ref_vuosi_vali, plot_dir) {
   paikka_a <- paikka[paikka$Paikka_Id == a_id, ]
   paikka_m <- paikka[paikka$Paikka_Id == m_id, ]
   
+  # Hae havaintopaikkojen pv-alueen kokoluokka (tiedostopolkuja varten)
+  # # Tarkista manuaali ja autom paikkojen kokoluokkien täsmääminen
+  # pval_kokoluokat <- c(paikka_a$pvalue_kokoluokka, paikka_m$pvalue_kokoluokka)
+  # if (pval_kokoluokat[1] == pval_kokoluokat[2]) {
+  #   pval_kokolk <- pval_kokoluokat[1]
+  # } else {
+  #   stop("Linkitettyjen paikkojen pv-alueet eroavat",print(a_id),print(m_id))
+  # }
+  pval_kokolk <- paikka_m$pvalue_kokoluokka # LUOTETAAN TOISTAISEKSI MANUAALIIN
+  
   if (nrow(paikka_a) < 1)
     stop("Linkkitaulun paikkaa ",a_id," ei löydy haetusta paikkojen taulusta")
   if (nrow(paikka_m) < 1)
@@ -42,7 +52,6 @@ pv_funktio <- function(m_id, a_id, period, ref_vuosi_vali, plot_dir) {
   
   # Rajaa manuaalimittaukset plottausvälille (ref.datan oton jälkeen)
   pdata_m <- subset(pdata_m, pdata_m$Aika >= start & pdata_m$Aika <= end)
-  
   
   #Rajaa automaatin data plottausvälille (myös loppupäästä, yleensä ei päde)
   pdata_a <- subset(pdata_a, pdata_a$Aika >= start & pdata_a$Aika <= end)
@@ -101,15 +110,6 @@ pv_funktio <- function(m_id, a_id, period, ref_vuosi_vali, plot_dir) {
     scale_x_datetime(date_breaks = "month") +
     theme(axis.text.x = element_text(angle = -90, vjust = 0.5))
   
-  
-  # # Tarkista manuaali ja autom paikkojen kokoluokkien täsmääminen
-  # pval_kokoluokat <- c(paikka_a$pvalue_kokoluokka, paikka_m$pvalue_kokoluokka)
-  # if (pval_kokoluokat[1] == pval_kokoluokat[2]) {
-  #   pval_kokolk <- pval_kokoluokat[1]
-  # } else {
-  #   stop("Linkitettyjen paikkojen pv-alueet eroavat",print(a_id),print(m_id))
-  # }
-  pval_kokolk <- paikka_m$pvalue_kokoluokka # LUOTETAAN TOISTAISEKSI MANUAALIIN
   
   # Aseta alakansiot ja tiedostonimet alueen koon perusteella
   tall_nimi_alakans <- switch(as.character(pval_kokolk),
