@@ -62,8 +62,8 @@ pv_funktio <- function(m_id, a_id, period, ref_vuosi_vali, plot_dir) {
   # Tarkista että löytyykö vertailujaksolta ollenkaan dataa
   if (nrow(pdata_m_ref) > 0) {
     # Hae toteutunut vertailuvuosien jakso plottauksen tekstejä varten
-    min_t <- min(data.table::year(pdata_m$Aika))
-    max_t <- max(data.table::year(pdata_m$Aika))
+    min_t <- min(data.table::year(pdata_m_ref$Aika))
+    max_t <- max(data.table::year(pdata_m_ref$Aika))
     vertailujakso_title <- paste("Vertailujakso",min_t,"-",max_t)
     
     # Laske kuukausiarvot päivittäisistä arvoista. Koottu yhteen tauluun.
