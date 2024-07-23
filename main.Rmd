@@ -102,8 +102,7 @@ korkeus <- DBI::dbGetQuery(
   stringr::str_glue(
     paste(readLines(file.path(D$secrets,"SQL","Korkeus.txt")),
           collapse = " "),
-    tietokanta = yaml::yaml.load_file(file.path(D$secrets,"db_info.yaml"))[["tietokanta"]],
-    paikka_idt = paste(c(ltaulu$AutomaattiPaikka_Id,ltaulu$ManuaaliPaikka_Id),collapse = ","))
+    paikka_idt = paste(c(ltaulu[[1]],ltaulu[[2]]),collapse = ","))
   )
 
 
@@ -172,7 +171,7 @@ rm(i)
 
 ```
 
-```{r pvesi_funktio_ajo, message = FALSE}
+```{r piirra-kayrat-luo-koonti, message = FALSE}
 save_path_pv <- file.path(D$output, "kuvaajat") # Määritä kuvaajien tallennuspolku
 
 # Aseta kuvaajien piirtoväli
@@ -190,27 +189,28 @@ koonti <- data.frame(
     )
   )
 
+# Aja funktio kaikille ltaulussa oleville man-AM pareille
 for (i in 1:nrow(ltaulu)) {
   m_id <- ltaulu[i, "ManuaaliPaikka_Id"]
   a_id <- ltaulu[i, "AutomaattiPaikka_Id"]
   tulos <- pv_funktio(m_id, a_id, jakso,
                       ref_vuosi_vali = c(1960,2020),
-                      plot_dir = save_path_pv)
-  if (i %% 20 == 0) print(tulos)
+                      plot_dir = save_path_pv, noplot=T)
+  if (i %% 30 == 0) print(tulos)
   koonti[i, ] <- tulos
 }
 colnames(koonti) <- names(tulos)
-rm(ajopvm, i, tulos)
+rm(i, tulos)
 
 # Tallenna ajon koonti tiedostoon
+koonti <- koonti[stringr::str_order(koonti$Tunnus_m, numeric=T), ]
 koonti <- koonti[order(koonti$asema_tunnus), ]
-koonti$X <- NULL
 write.csv2(koonti, file.path(D$output,"koonti.csv"))
-rm(koonti)
+
 
 ```
 
-```{r pvesi_kartta, message = FALSE}
+```{r piirra-kartat, message = FALSE}
 # Aseta karttojen tallennuskansio
 kartat_path <- check_dir(D$output,"kartat", ensure = T)
 
