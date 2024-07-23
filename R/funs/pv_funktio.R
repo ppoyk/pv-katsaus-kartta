@@ -72,16 +72,23 @@ pv_funktio <- function(m_id, a_id, period, ref_vuosi_vali, plot_dir) {
       aggregate(Korkeus ~ month, data=pdata_m_ref, FUN="min", drop=F)[,-1],
       aggregate(Korkeus ~ month, data=pdata_m_ref, FUN="max", drop=F)[,-1]
     )
-    colnames(ref_df) <- c("month", "ref_mean", "ref_min", "ref_max")
-    
   } else {
     vertailujakso_title <- paste("Ei vertailudataa jaksolta",
                                  ref_vuosi_vali[[1]],"-",ref_vuosi_vali[[2]])
     ref_df <- data.frame(matrix(NA, nrow=12, ncol=4))
     ref_df[,1] <- c(1:12)
-    colnames(ref_df) <- c("month", "ref_mean", "ref_min", "ref_max")
   }
+  colnames(ref_df) <- c("month", "ref_mean", "ref_min", "ref_max")
   
+
+  # Tarkista että AM dataa löytyy piirtoväliltä. Generoi jos puuttuu (yhd_1 varten)
+  if (nrow(pdata_a) < 1) {
+    N.ref_df <- nrow(ref_df)
+    #Jakson pituuden säätö vaadittu jotta nykhetk & siitä taaksepäin joka kk saa arvon 
+    fake_aika <- seq.Date(period[[1]], period[[2]], length.out = N.ref_df + 1)[-1]
+    pdata_a[1:N.ref_df,"Aika"]  <- fake_aika
+    pdata_a[1:N.ref_df,"month"] <- data.table::month(fake_aika)#Tarv. yhdistämiseen
+  }
   
   # Aineistojen yhdistys (AM data & man.mittausten kk-statsit vertailujaksolta)
   yht_1 <- base::merge(pdata_a, ref_df, by = "month", all = TRUE)
