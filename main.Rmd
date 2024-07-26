@@ -72,6 +72,7 @@ ltaulu <- DBI::dbGetQuery(
   paste(
     readLines(file.path(D$secrets,"SQL","PaikkaAutomaattiManuaali.txt")),#Query from file
     collapse = " "))
+stopifnot(ncol(ltaulu) == 2) # Check that format has remained consistent
 
 # Haetaan pv-alueiden tiedot
 pvalueet <-  DBI::dbGetQuery(
@@ -86,7 +87,7 @@ paikka <- DBI::dbGetQuery(
   stringr::str_glue(
   paste(readLines(file.path(D$secrets,"SQL","Paikka.txt")),#Query from file
         collapse = " "),
-  paikka_idt = paste(c(ltaulu$AutomaattiPaikka_Id,ltaulu$ManuaaliPaikka_Id),collapse = ","))
+  paikka_idt = paste(c(ltaulu[[1]],ltaulu[[2]]),collapse = ","))
   )
 paikka$KoordErLat <- gsub("\\,", "\\.", paikka$KoordErLat)
 paikka$KoordErLong <- gsub("\\,", "\\.", paikka$KoordErLong)
@@ -104,7 +105,6 @@ korkeus <- DBI::dbGetQuery(
           collapse = " "),
     paikka_idt = paste(c(ltaulu[[1]],ltaulu[[2]]),collapse = ","))
   )
-
 
 ```
 
@@ -180,7 +180,6 @@ kuv_alkupvm <- ajopvm - as.difftime(365, units="days")#Kuvaajien alku pvm (taaks
 jakso <- c(kuv_alkupvm, ajopvm)
 rm(ajopvm, kuv_alkupvm)
 
-
 # Valmistele koontitaulukko oikean kokoiseksi (nopeuttaa huomattavasti)
 koonti <- data.frame(
   matrix(NA,
@@ -211,24 +210,10 @@ write.csv2(koonti, file.path(D$output,"koonti.csv"))
 ```
 
 ```{r piirra-kartat, message = FALSE}
-# Aseta karttojen tallennuskansio
-kartat_path <- check_dir(D$output,"kartat", ensure = T)
-
-# Luetaan data tiedostosta
-koonti <- read.csv2(file.path(D$output, "koonti.csv"),
-                    header = TRUE, sep=";", dec=".", stringsAsFactors = FALSE)
-# Muutetaan numeerisesti määritetty kokoluokka oikein factoriksi
-koonti[["pvalue_kokoluokka"]] <- factor(koonti$pvalue_kokoluokka,
-                                        levels = pv_alue_lkt$levels,
-                                        labels = pv_alue_lkt$labels)
-# Poistetaan virheelliset rivit
-df <- koonti
-df <- df[!is.na(df$Korkeus...ka), ]
-
-
 # Karttapohjan tuominen
-world <- ne_countries(scale = "large", returnclass = "sf",
-                      country=c("Finland","Russia","Estonia","Aland","Sweden","Norway"))
+world <- ne_countries(
+  scale = "large", returnclass = "sf",
+  country=c("Finland","Russia","Estonia","Aland","Sweden","Norway"))
 # Karttapohjan piirtäminen ja rajaus
 map_fin <- ggplot(data = world) + geom_sf() +
   coord_sf(xlim = c(19.18, 31.85), ylim = c(59.7, 70.2), expand = FALSE)
@@ -257,7 +242,7 @@ kartat_plot <- function(lon, lat, value, col) {
         #,legend.key.size = unit(leg_size/9, "lines")
         )
 }
-
+# Määritä karttojen tallennuksen funktio (eli aseta default arvot)
 kartat_save <- function(plot, tall_nimi,
                         height = 22, width = 12,  units = "in", dpi = 300,
                         limitsize = FALSE) {
@@ -265,6 +250,18 @@ kartat_save <- function(plot, tall_nimi,
          height = height, width = width, units = units, dpi = dpi,
          limitsize = limitsize)
 }
+
+
+# Luetaan data tiedostosta
+koonti <- read.csv2(file.path(D$output, "koonti.csv"),
+                    header = TRUE, sep=";", dec=".", stringsAsFactors = FALSE)
+# Muutetaan numeerisesti määritetty kokoluokka oikein factoriksi
+koonti[["pvalue_kokoluokka"]] <- factor(koonti$pvalue_kokoluokka,
+                                        levels = pv_alue_lkt$levels,
+                                        labels = pv_alue_lkt$labels)
+# Poistetaan virheelliset rivit
+df <- koonti
+df <- df[!is.na(df$Korkeus...ka), ]
 
 # Koordinaattien korjaus ja muokkaus oikeaan muotoon + pv_korkeuden muuntaminen senttimetreiksi
 df$Korkeus...ka <- as.numeric(df$Korkeus...ka) * 100
@@ -309,6 +306,9 @@ df$color <- as.factor(df$color)
 cols <- c("1"="red", "2"="brown4", "3"="darkgoldenrod",
           "4"="dodgerblue2", "5"="blue", "6"="darkolivegreen", "7"="darkgreen")
 
+
+# Aseta karttojen tallennuskansio
+kartat_path <- check_dir(D$output,"kartat", ensure = T)
 
 # Ensimmäisen kartan plottaus ja tallennus
 plot <- kartat_plot(df$KoordErLong, df$KoordErLat, df$Korkeus...ka, df$color)
