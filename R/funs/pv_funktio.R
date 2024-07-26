@@ -48,11 +48,19 @@ pv_funktio <- function(m_id, a_id, period, ref_vuosi_vali, plot_dir, noplot=F) {
   pdata_m[["year"]] <- data.table::year(pdata_m$Aika)
   pdata_a[["year"]] <- data.table::year(pdata_a$Aika)
   
-  # Rajaa manuaalimittaukset plottausvälille (ref.datan oton jälkeen)
   # Rajaa KAIKISTA man.mittauksista vertailujakso, josta lasketaan tilastoluvut
   pdata_m_ref <- subset(pdata_m, pdata_m$year >= ref_vuosi_vali[[1]] &
                           pdata_m$year <= ref_vuosi_vali[[2]])
   
+  # Rajaa kaikista man. ja AM mittauksista jakso, jolla kohdistetaan AM käyrä
+  # Alustavasti käytetään kaikkia mittauksia viimeiseltä 2v jaksolta
+  # (Huomattavat outlierit man.mittauksissa suodatetaan, ks. aikasarjojen_erotus())
+  pdata_m_2v <- subset(pdata_m, pdata_m$Aika >= start &
+                         pdata_m$Aika >= end - as.difftime(2*52,units="weeks"))
+  pdata_a_2v <- subset(pdata_a, pdata_a$Aika >= start &
+                         pdata_a$Aika >= end - as.difftime(2*52,units="weeks"))
+  
+  # Rajaa manuaalimittaukset plottausvälille (ref.datan ja 2v datan oton jälkeen)
   pdata_m <- subset(pdata_m, pdata_m$Aika >= start & pdata_m$Aika <= end)
   
   #Rajaa automaatin data plottausvälille (myös loppupäästä, yleensä ei päde)
@@ -83,18 +91,24 @@ pv_funktio <- function(m_id, a_id, period, ref_vuosi_vali, plot_dir, noplot=F) {
   }
   colnames(ref_df) <- c("month", "ref_mean", "ref_min", "ref_max")
   
-
-  # Tarkista että AM dataa löytyy piirtoväliltä. Generoi jos puuttuu (yhd_1 varten)
-  if (nrow(pdata_a) < 1) {
+  # Tarkista että AM dataa löytyy piirtoväliltä.
+  # Jos dataa löytyy, korjaa se viimeisimpien manuaalimittausten perusteella
+  if (nrow(pdata_a) > 0) {
+    a_korj <- aikasarja_erotus(pdata_a_2v, pdata_m_2v) #Kohd. viim. 2v datalla
+    pdata_a$Korkeus <- pdata_a$Korkeus + a_korj
+  } else {
+    # Jos AM data puuttuu, generoi NA:ta riittävä määrä (yhd_1 varten)
     N.ref_df <- nrow(ref_df)
-    #Jakson pituuden säätö vaadittu jotta nykhetk & siitä taaksepäin joka kk saa arvon 
+    # +1)[-1] vaadittu jotta nykhetk & siitä taaksepäin joka kk saa arvon 
     fake_aika <- seq.Date(period[[1]], period[[2]], length.out = N.ref_df + 1)[-1]
     pdata_a[1:N.ref_df,"Aika"]  <- fake_aika
     pdata_a[1:N.ref_df,"month"] <- data.table::month(fake_aika)#Tarv. yhdistämiseen
+    a_korj <- numeric(0)#Määritä tyhjäksi plotissa näytettävä shiftaus
   }
   
   # Aineistojen yhdistys (AM data & man.mittausten kk-statsit vertailujaksolta)
   yht_1 <- base::merge(pdata_a, ref_df, by = "month", all = TRUE)
+
   
   # Tee datasta plotti (jos ei ole ohitettu)
   if (!noplot) {
