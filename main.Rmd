@@ -70,7 +70,7 @@ writeLines(c("Kuvaajien luonnin skripti aloitettu:",
 ltaulu <- DBI::dbGetQuery(
   .connect_db(D$secrets),
   paste(
-    readLines(file.path(D$secrets,"SQL","PaikkaAutomaattiManuaali.txt")),#Query from file
+    readLines(file.path(D$secrets,"SQL","PaikkaAmMan.txt")),#Query from file
     collapse = " "))
 stopifnot(ncol(ltaulu) == 2) # Check that format has remained consistent
 
@@ -101,7 +101,7 @@ rm(s)
 korkeus <- DBI::dbGetQuery(
   .connect_db(D$secrets),
   stringr::str_glue(
-    paste(readLines(file.path(D$secrets,"SQL","Korkeus.txt")),
+    paste(trimws(readLines(file.path(D$secrets,"SQL","Korkeus.txt"))),
           collapse = " "),
     paikka_idt = paste(c(ltaulu[[1]],ltaulu[[2]]),collapse = ","))
   )
