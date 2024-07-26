@@ -43,14 +43,16 @@ pv_funktio <- function(m_id, a_id, period, ref_vuosi_vali, plot_dir, noplot=F) {
 
   
   # Muutetaan man.mittausten kuukausi factoriksi (referenssidatan laskentaa varten)
-  pdata_m$month <- data.table::month(pdata_m$Aika) |> factor(levels = c(1:12))
-
-  # Rajaa KAIKISTA man.mittauksista vertailujakso, josta lasketaan tilastoluvut
-  pdata_m_ref <- subset(pdata_m,
-                        data.table::year(pdata_m$Aika) >= ref_vuosi_vali[[1]] &
-                          data.table::year(pdata_m$Aika) <= ref_vuosi_vali[[2]])
+  pdata_m[["month"]] <- data.table::month(pdata_m$Aika) |> factor(levels = c(1:12))
+  # Otetaan myös vuodet omaan sarakkeeseen, koska niitä käytetään monessa kohdassa
+  pdata_m[["year"]] <- data.table::year(pdata_m$Aika)
+  pdata_a[["year"]] <- data.table::year(pdata_a$Aika)
   
   # Rajaa manuaalimittaukset plottausvälille (ref.datan oton jälkeen)
+  # Rajaa KAIKISTA man.mittauksista vertailujakso, josta lasketaan tilastoluvut
+  pdata_m_ref <- subset(pdata_m, pdata_m$year >= ref_vuosi_vali[[1]] &
+                          pdata_m$year <= ref_vuosi_vali[[2]])
+  
   pdata_m <- subset(pdata_m, pdata_m$Aika >= start & pdata_m$Aika <= end)
   
   #Rajaa automaatin data plottausvälille (myös loppupäästä, yleensä ei päde)
@@ -60,10 +62,11 @@ pv_funktio <- function(m_id, a_id, period, ref_vuosi_vali, plot_dir, noplot=F) {
   
 
   # Tarkista että löytyykö vertailujaksolta ollenkaan dataa
+  
   if (nrow(pdata_m_ref) > 0) {
     # Hae toteutunut vertailuvuosien jakso plottauksen tekstejä varten
-    min_t <- min(data.table::year(pdata_m_ref$Aika))
-    max_t <- max(data.table::year(pdata_m_ref$Aika))
+    min_t <- min(pdata_m_ref$year)
+    max_t <- max(pdata_m_ref$year)
     vertailujakso_title <- paste("Vertailujakso",min_t,"-",max_t)
     
     # Laske kuukausiarvot päivittäisistä arvoista. Koottu yhteen tauluun.
