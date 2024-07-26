@@ -130,9 +130,14 @@ pv_funktio <- function(m_id, a_id, period, ref_vuosi_vali, plot_dir, noplot=F) {
           geom_point(data = pdata_m, aes(x = Aika, y = Korkeus))
         }
       ) +
-      ggtitle(paste(paikka_a$Tunnus, paikka_m$Tunnus, vertailujakso_title)) +
+      labs(title = p(paikka_a$Tunnus, paikka_m$Tunnus, vertailujakso_title),
+           subtitle =
+             p("man. ID:",m_id,"AM ID:",a_id,"— AM ad-hoc korjaus:",
+               scales::label_number(
+                 style_positive=c("plus"), accuracy=.001)(a_korj),"m")) +
       scale_x_datetime(date_breaks = "month") +
-      theme(axis.text.x = element_text(angle = -90, vjust = 0.5))
+      theme(axis.text.x = element_text(angle = -90, vjust = 0.5),
+            plot.subtitle = element_text(size=7, margin = margin())) #No margins
     
     # Aseta alakansiot ja tiedostonimet alueen koon perusteella
     tall_nimi_alakans <- switch(as.character(pval_kokolk),
