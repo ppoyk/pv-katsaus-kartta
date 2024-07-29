@@ -183,16 +183,16 @@ save_path_pv <- file.path(D$output, "kuvaajat") # Määritä kuvaajien tallennus
 ajopvm <- Sys.Date()
 kuv_alkupvm <- ajopvm - as.difftime(365, units="days")#Kuvaajien alku pvm (taaksepäin)
 jakso <- c(kuv_alkupvm, ajopvm)
-rm(ajopvm, kuv_alkupvm)
+rm(kuv_alkupvm)
 
 # Valmistele koontitaulukko oikean kokoiseksi (nopeuttaa huomattavasti)
-koonti <- data.frame(
-  matrix(NA,
-    ncol = length(pv_funktio(ltaulu[1,2], ltaulu[1,1],
-                             jakso, c(1990,2000), tempdir(), noplot=T)),
-    nrow = nrow(ltaulu)
-    )
-  )
+# Aja funktio kerran: muotoillaan tuloksen mukaan
+koonti_init <- pv_funktio(ltaulu[1,2], ltaulu[1,1],
+                          jakso, c(2000,2024), tempdir(), noplot = TRUE)
+koonti <- data.frame(matrix(NA, ncol = length(koonti_init), nrow=nrow(ltaulu)))
+colnames(koonti) <- names(koonti_init)
+rm(koonti_init)
+
 
 # Check if no plots are wanted (only resulting df)
 noplot <- ifelse("noplot" %in% commandArgs(), TRUE, FALSE)
