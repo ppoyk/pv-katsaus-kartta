@@ -162,7 +162,9 @@ pv_funktio <- function(m_id, a_id, period, ref_vuosi_vali, plot_dir, noplot=F) {
   
   
   # Valmistele automaatin data tulostukseen
-  yht_1 <- yht_1[!is.na(yht_1$Korkeus.x), ]
+  # Suodata NA pois. Ohita jos suodattaisi kaikki (tyhjillä aiheutuu ongelmia)
+  if (any(!is.na(yht_1$Korkeus))) yht_1 <- yht_1[!is.na(yht_1$Korkeus), ]
+
   # Paikan tuorein arvo ylimmäksi
   yht_1 <- yht_1[order(yht_1$Aika, decreasing = TRUE),]
   
