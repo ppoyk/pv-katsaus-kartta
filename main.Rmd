@@ -98,7 +98,8 @@ paikka$KoordErLong <- as.numeric(paikka$KoordErLong)
 # Poista tunnuksista kautta-merkit ja korvaa viivalla
 paikka$Tunnus <- gsub("/","-", paikka$Tunnus)
 # Trimmaa tunnukset ja nimet
-for (s in c("Tunnus","Nimi")) paikka[[s]] <- trimws(paikka[[s]], which="both")
+for (s in c("Tunnus","Nimi","asema_tunnus","asema_nimi"))
+  paikka[[s]] <- trimws(paikka[[s]], which = "both")
 rm(s)
 
 # Hae kaikki pinnankorkeudet linkkitaulun kaikilta paikoilta
