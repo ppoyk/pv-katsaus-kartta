@@ -204,7 +204,7 @@ for (i in 1:nrow(ltaulu)) {
   tulos <- pv_funktio(m_id, a_id, jakso,
                       ref_vuosi_vali = c(1960,2020),
                       plot_dir = save_path_pv, noplot=noplot)
-  if (i %% 30 == 0) print(tulos)
+  if (i %% 40 == 0) print(unlist(tulos))
   koonti[i, ] <- tulos
 }
 colnames(koonti) <- names(tulos)
