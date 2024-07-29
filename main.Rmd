@@ -89,8 +89,12 @@ paikka <- DBI::dbGetQuery(
         collapse = " "),
   paikka_idt = paste(c(ltaulu[[1]],ltaulu[[2]]),collapse = ","))
   )
-paikka$KoordErLat <- gsub("\\,", "\\.", paikka$KoordErLat)
+# Convert polar coordinates to numerics
+paikka$KoordErLat  <- gsub("\\,", "\\.", paikka$KoordErLat)
 paikka$KoordErLong <- gsub("\\,", "\\.", paikka$KoordErLong)
+paikka$KoordErLat  <- as.numeric(paikka$KoordErLat)
+paikka$KoordErLong <- as.numeric(paikka$KoordErLong)
+
 # Poista tunnuksista kautta-merkit ja korvaa viivalla
 paikka$Tunnus <- gsub("/","-", paikka$Tunnus)
 # Trimmaa tunnukset ja nimet
