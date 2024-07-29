@@ -214,8 +214,6 @@ rm(i, tulos)
 koonti <- koonti[stringr::str_order(koonti$Tunnus_m, numeric=T), ]
 koonti <- koonti[order(koonti$asema_tunnus), ]
 write.csv2(koonti, file.path(D$output,"koonti.csv"))
-
-
 ```
 
 ```{r piirra-kartat, message = FALSE}
@@ -262,12 +260,14 @@ kartat_save <- function(plot, tall_nimi,
 
 
 # Luetaan data tiedostosta
-koonti <- read.csv2(file.path(D$output, "koonti.csv"),
-                    header = TRUE, sep=";", dec=".", stringsAsFactors = FALSE)
-# Muutetaan numeerisesti määritetty kokoluokka oikein factoriksi
-koonti[["pvalue_kokoluokka"]] <- factor(koonti$pvalue_kokoluokka,
-                                        levels = pv_alue_lkt$levels,
-                                        labels = pv_alue_lkt$labels)
+df <- read.csv2(file.path(D$output, "koonti.csv"),
+                header = TRUE, sep=";", dec=".",
+                stringsAsFactors = FALSE,
+                colClasses = c("Aika"="POSIXct"),
+                row.names = 1) # Älä ota rivinroita sarakkeeksi. 
+# Muutetaan csv:stä luettu kokoluokka oikein factoriksi
+df$pvalue_kokoluokka <- factor(df$pvalue_kokoluokka) |> relevel("Pieni")
+
 # Poistetaan virheelliset rivit
 df <- koonti
 df <- df[!is.na(df$Korkeus...ka), ]
