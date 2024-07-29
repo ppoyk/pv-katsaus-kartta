@@ -43,11 +43,10 @@ pv_funktio <- function(m_id, a_id, period, ref_vuosi_vali, plot_dir, noplot=F) {
 
   
   # Muutetaan man.mittausten kuukausi factoriksi (referenssidatan laskentaa varten)
-  pdata_m[["month"]] <- data.table::month(pdata_m$Aika) |> factor(levels = c(1:12))
+  pdata_m[["month"]] <- factor(data.table::month(pdata_m$Aika), levels = c(1:12))
   # Otetaan myös vuodet omaan sarakkeeseen, koska niitä käytetään monessa kohdassa
   pdata_m[["year"]] <- data.table::year(pdata_m$Aika)
-  pdata_a[["year"]] <- data.table::year(pdata_a$Aika)
-  
+
   # Rajaa KAIKISTA man.mittauksista vertailujakso, josta lasketaan tilastoluvut
   pdata_m_ref <- subset(pdata_m, pdata_m$year >= ref_vuosi_vali[[1]] &
                           pdata_m$year <= ref_vuosi_vali[[2]])
@@ -55,10 +54,12 @@ pv_funktio <- function(m_id, a_id, period, ref_vuosi_vali, plot_dir, noplot=F) {
   # Rajaa kaikista man. ja AM mittauksista jakso, jolla kohdistetaan AM käyrä
   # Alustavasti käytetään kaikkia mittauksia viimeiseltä 2v jaksolta
   # (Huomattavat outlierit man.mittauksissa suodatetaan, ks. aikasarjojen_erotus())
-  pdata_m_2v <- subset(pdata_m, pdata_m$Aika >= start &
-                         pdata_m$Aika >= end - as.difftime(2*52,units="weeks"))
-  pdata_a_2v <- subset(pdata_a, pdata_a$Aika >= start &
-                         pdata_a$Aika >= end - as.difftime(2*52,units="weeks"))
+  pdata_m_2v <- subset(pdata_m,
+                       pdata_m$Aika >= end - as.difftime(2*52,units="weeks") &
+                         pdata_m$Aika <= end)
+  pdata_a_2v <- subset(pdata_a,
+                       pdata_a$Aika >= end - as.difftime(2*52,units="weeks") &
+                         pdata_a$Aika <= end)
   
   # Rajaa manuaalimittaukset plottausvälille (ref.datan ja 2v datan oton jälkeen)
   pdata_m <- subset(pdata_m, pdata_m$Aika >= start & pdata_m$Aika <= end)
@@ -66,7 +67,7 @@ pv_funktio <- function(m_id, a_id, period, ref_vuosi_vali, plot_dir, noplot=F) {
   #Rajaa automaatin data plottausvälille (myös loppupäästä, yleensä ei päde)
   pdata_a <- subset(pdata_a, pdata_a$Aika >= start & pdata_a$Aika <= end)
   # Laske tarvittavat lisäsarakkeet ajalle
-  pdata_a$month <- data.table::month(pdata_a$Aika)
+  pdata_a[["month"]] <- data.table::month(pdata_a$Aika)
   
 
   # Tarkista että löytyykö vertailujaksolta ollenkaan dataa
@@ -78,7 +79,7 @@ pv_funktio <- function(m_id, a_id, period, ref_vuosi_vali, plot_dir, noplot=F) {
     vertailujakso_title <- paste("Vertailujakso",min_t,"-",max_t)
     
     # Laske kuukausiarvot päivittäisistä arvoista. Koottu yhteen tauluun.
-    ref_df <- data.frame(
+    ref_df <- cbind.data.frame(
       aggregate(Korkeus ~ month, data=pdata_m_ref, FUN="mean", drop=F),
       aggregate(Korkeus ~ month, data=pdata_m_ref, FUN="min", drop=F)[,-1],
       aggregate(Korkeus ~ month, data=pdata_m_ref, FUN="max", drop=F)[,-1]
@@ -107,9 +108,9 @@ pv_funktio <- function(m_id, a_id, period, ref_vuosi_vali, plot_dir, noplot=F) {
   }
   
   # Aineistojen yhdistys (AM data & man.mittausten kk-statsit vertailujaksolta)
-  yht_1 <- base::merge(pdata_a, ref_df, by = "month", all = TRUE)
-
+  yht_1 <- base::merge(pdata_a, ref_df, by = "month", all = TRUE, sort = FALSE)
   
+    
   # Tee datasta plotti (jos ei ole ohitettu)
   if (!noplot) {
     plot <- ggplot(data = yht_1) +
@@ -130,7 +131,8 @@ pv_funktio <- function(m_id, a_id, period, ref_vuosi_vali, plot_dir, noplot=F) {
           geom_point(data = pdata_m, aes(x = Aika, y = Korkeus))
         }
       ) +
-      labs(title = p(paikka_a$Tunnus, paikka_m$Tunnus, vertailujakso_title),
+      labs(x = "Aika", y = "Korkeus (N2000)",
+           title = p(paikka_a$Tunnus, paikka_m$Tunnus, vertailujakso_title),
            subtitle =
              p("man. ID:",m_id,"AM ID:",a_id,"— AM ad-hoc korjaus:",
                scales::label_number(
@@ -153,8 +155,9 @@ pv_funktio <- function(m_id, a_id, period, ref_vuosi_vali, plot_dir, noplot=F) {
       stop(p("Virheellinen PValueen kokoluokka:",pval_kokolk,"\t-",paikka_m,m_id))
     )
     
-    ggsave(tall_nimi_alakans, plot, create.dir = T)
-    ggsave(tall_nimi_all,     plot, create.dir = T)
+    wid <- unit(8, "in") ; hei <- unit(7, "in")
+    ggsave(tall_nimi_alakans, plot, create.dir=T, width=wid, height=hei)
+    ggsave(tall_nimi_all,     plot, create.dir=T, width=wid, height=hei)
   }
   
   
@@ -163,7 +166,7 @@ pv_funktio <- function(m_id, a_id, period, ref_vuosi_vali, plot_dir, noplot=F) {
   # Paikan tuorein arvo ylimmäksi
   yht_1 <- yht_1[order(yht_1$Aika, decreasing = TRUE),]
   
-  tulostus <- c(
+    tulostus <- data.frame(
     "Tunnus_a" = paikka_a$Tunnus, "Tunnus_m" = paikka_m$Tunnus,
     "asema_tunnus" = paikka_m$asema_tunnus, "asema" = paikka_m$asema_nimi,
     "ref_ka_delta"  = yht_1[1, "Korkeus"] - yht_1[1, "ref_mean"],
@@ -171,9 +174,9 @@ pv_funktio <- function(m_id, a_id, period, ref_vuosi_vali, plot_dir, noplot=F) {
     "ref_max_delta" = yht_1[1, "Korkeus"] - yht_1[1, "ref_max"],
     "Korkeus" = yht_1[1, "Korkeus"],
     "ref_ka" = yht_1[1, "ref_mean"], "ref_max" = yht_1[1, "ref_max"],
-    "ref_min" = yht_1[1, "ref_min"], "Pvm" = yht_1[1, "Aika"],
+    "ref_min" = yht_1[1, "ref_min"], "Aika" = yht_1[1, "Aika"],
     "KoordErLat" = paikka_a$KoordErLat, "KoordErLong" = paikka_a$KoordErLong,
-    "PohjavesiAlue_Id" = yht_1[1, "PohjavesiAlue_Id"],
+    "PohjavesiAlue_Id" = paikka_m$PohjavesiAlue_Id, #luotetaan man. pv-al.
     "pvalue_kokoluokka" = pval_kokolk)
   
   # Pyöristä numerosarakkeet (ei koordinaattisarakkeita)
