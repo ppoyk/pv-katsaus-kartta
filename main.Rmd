@@ -207,11 +207,10 @@ for (i in 1:nrow(ltaulu)) {
   if (i %% 40 == 0) print(unlist(tulos))
   koonti[i, ] <- tulos
 }
-colnames(koonti) <- names(tulos)
 rm(i, tulos)
 
-# Tallenna ajon koonti tiedostoon
-koonti <- koonti[stringr::str_order(koonti$Tunnus_m, numeric=T), ]
+# Järjestä asemittain, aseman sisällä tunnuksen mukaan (tulkittuna "loogisesti")
+koonti <- koonti[stringr::str_order(koonti$Tunnus_m, numeric = TRUE), ]
 koonti <- koonti[order(koonti$asema_tunnus), ]
 
 # Tallenna koonti tiedostoon (BOM varmistaa ääkköset)
