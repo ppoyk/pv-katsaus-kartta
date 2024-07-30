@@ -168,14 +168,18 @@ pv_funktio <- function(m_id, a_id, period, ref_vuosi_vali, plot_dir, noplot=F) {
   yht_1 <- yht_1[order(yht_1$Aika, decreasing = TRUE),]
   
     tulostus <- data.frame(
+    "Paikka_Id_AM" = paikka_a$Paikka_Id,
     "Tunnus_a" = paikka_a$Tunnus, "Tunnus_m" = paikka_m$Tunnus,
     "asema_tunnus" = paikka_m$asema_tunnus, "asema" = paikka_m$asema_nimi,
+    "ref_ka" = yht_1[1, "ref_mean"], "ref_max" = yht_1[1, "ref_max"],
+    "ref_min" = yht_1[1, "ref_min"],
+    "ref_N" = length(na.omit(pdata_m$Korkeus)),
+    "ref_yearN" = max_t - min_t,
+    "Korkeus" = yht_1[1, "Korkeus"],
+    "Aika" = yht_1[1, "Aika"],
     "ref_ka_delta"  = yht_1[1, "Korkeus"] - yht_1[1, "ref_mean"],
     "ref_min_delta" = yht_1[1, "Korkeus"] - yht_1[1, "ref_min"],
     "ref_max_delta" = yht_1[1, "Korkeus"] - yht_1[1, "ref_max"],
-    "Korkeus" = yht_1[1, "Korkeus"],
-    "ref_ka" = yht_1[1, "ref_mean"], "ref_max" = yht_1[1, "ref_max"],
-    "ref_min" = yht_1[1, "ref_min"], "Aika" = yht_1[1, "Aika"],
     "KoordErLat" = paikka_a$KoordErLat, "KoordErLong" = paikka_a$KoordErLong,
     "PohjavesiAlue_Id" = paikka_m$PohjavesiAlue_Id, #luotetaan man. pv-al.
     "pvalue_kokoluokka" = pval_kokolk)
@@ -187,3 +191,4 @@ pv_funktio <- function(m_id, a_id, period, ref_vuosi_vali, plot_dir, noplot=F) {
   
   return(tulostus)
 }
+
