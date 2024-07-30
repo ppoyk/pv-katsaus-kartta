@@ -213,14 +213,17 @@ rm(i, tulos)
 # Tallenna ajon koonti tiedostoon
 koonti <- koonti[stringr::str_order(koonti$Tunnus_m, numeric=T), ]
 koonti <- koonti[order(koonti$asema_tunnus), ]
-write.csv2(koonti, file.path(D$output,"koonti.csv"))
+
+# Tallenna koonti tiedostoon (BOM varmistaa ääkköset)
+data.table::fwrite(koonti, file.path(D$output,"koonti.csv"),
+                   sep = ";", dec = ".", row.names = F, bom = T)
 ```
 
 ```{r piirra-kartat, message = FALSE}
 # Karttapohjan tuominen
 world <- ne_countries(
   scale = "large", returnclass = "sf",
-  country=c("Finland","Russia","Estonia","Aland","Sweden","Norway"))
+  country = c("Finland","Russia","Estonia","Aland","Sweden","Norway"))
 # Karttapohjan piirtäminen ja rajaus
 map_fin <- ggplot(data = world) + geom_sf() +
   coord_sf(xlim = c(19.18, 31.85), ylim = c(59.7, 70.2), expand = FALSE)
@@ -260,11 +263,10 @@ kartat_save <- function(plot, tall_nimi,
 
 
 # Luetaan data tiedostosta
-df <- read.csv2(file.path(D$output, "koonti.csv"),
-                header = TRUE, sep=";", dec=".",
-                stringsAsFactors = FALSE,
-                colClasses = c("Aika"="POSIXct"),
-                row.names = 1) # Älä ota rivinroita sarakkeeksi. 
+df <- read.csv(file.path(D$output, "koonti.csv"),
+               header = TRUE, sep = ";", dec = ".",
+               na.strings = c("NA", ""), stringsAsFactors = FALSE, 
+               colClasses = c("Aika"="POSIXct"))
 # Muutetaan csv:stä luettu kokoluokka oikein factoriksi
 df$pvalue_kokoluokka <- factor(df$pvalue_kokoluokka) |> relevel("Pieni")
 

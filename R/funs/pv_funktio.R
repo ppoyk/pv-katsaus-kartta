@@ -10,7 +10,7 @@ pv_funktio <- function(m_id, a_id, period, ref_vuosi_vali, plot_dir, noplot=F) {
   # plot_dir <- file.path(D$output,"test")
   
   stopifnot(is.numeric(c(a_id,m_id)),
-            is_date(period), length(period)==2, period[[1]]<period[[2]])
+            is_date(period), length(period) == 2, period[[1]] < period[[2]])
   requireNamespace("ggplot2"); requireNamespace("data.table")
   
   # Hae paikkojen tiedot
@@ -35,7 +35,6 @@ pv_funktio <- function(m_id, a_id, period, ref_vuosi_vali, plot_dir, noplot=F) {
   # Hae paikkojen korkeusdata
   pdata_a <- korkeus[korkeus$Paikka_Id == paikka_a$Paikka_Id, ]
   pdata_m <- korkeus[korkeus$Paikka_Id == paikka_m$Paikka_Id, ]
-  
   
   # Aseta piirrettävän jakson aikaväli
   start <- as.POSIXct(period[[1]])
@@ -155,7 +154,7 @@ pv_funktio <- function(m_id, a_id, period, ref_vuosi_vali, plot_dir, noplot=F) {
       stop(p("Virheellinen PValueen kokoluokka:",pval_kokolk,"\t-",paikka_m,m_id))
     )
     
-    wid <- unit(8, "in") ; hei <- unit(7, "in")
+    wid <- unit(6, "in") ; hei <- unit(5, "in")
     ggsave(tall_nimi_alakans, plot, create.dir=T, width=wid, height=hei)
     ggsave(tall_nimi_all,     plot, create.dir=T, width=wid, height=hei)
   }
