@@ -17,8 +17,8 @@ taskscheduleR::taskscheduler_create(
   # Output folder set to specific network share folder by "verkkolevytallennus"
   # Prev result files are wiped from (selected) results-folder by "clean_output"
   rscript_args = c("verkkolevytallennus","clean_output"),
-  schedule = "WEEKLY", days = "TUE",
-  starttime = "08:15",
+  schedule = "WEEKLY", days = "MON",
+  starttime = "08:10",
   startdate = format(Sys.time(), "%d.%m.%Y"),
   debug = TRUE)
 
