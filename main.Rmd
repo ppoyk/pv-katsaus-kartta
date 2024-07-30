@@ -247,18 +247,10 @@ koonti_as_ka <-
                 asema_minka  = mean(ref_min_delta, na.rm=T),
                 Paikka_Id_AM = Paikka_Id_AM, # Mergeä varten
                 .keep = "none")
-
-# Näytetään ka vain yhdellä rivillä per asema (helpottamaan ihmislukijaa)
-# Ilmoitetaan myös ka:ssa käytettyjen putkien lkm
-koonti_as_ka[["ka_N"]] <- NA # Alustetaan sarake keskiarvon putkien lkm:lle
-for (a in unique(koonti_as_ka$asema_tunnus)) {
-  koonti_as_ka[koonti_as_ka$asema_tunnus == a, "ka_N"] <-
-    nrow(koonti_as_ka[koonti_as_ka$asema_tunnus == a,])
-  koonti_as_ka[koonti_as_ka$asema_tunnus == a,
-               c("asema_ka","asema_maxka","asema_minka","ka_N")][-1,] <- NA
-}
-rm(a)
 koonti_as_ka$asema_tunnus <- NULL # Drop col (avoid duplicate in merge)
+# Round calculated station averages
+koonti_as_ka[, c("asema_ka","asema_maxka","asema_minka")] <-
+  signif(koonti_as_ka[, c("asema_ka","asema_maxka","asema_minka")], 3)
 
   
 # Liitetään alkuperäiseen (as koht ka laskennassa osa riveistä piti pudottaa)
@@ -268,6 +260,25 @@ rm(koonti_as_ka)
 # Järjestä asemittain, aseman sisällä tunnuksen mukaan (tulkittuna "loogisesti")
 koonti <- koonti[stringr::str_order(koonti$Tunnus_m, numeric = TRUE), ]
 koonti <- koonti[order(koonti$asema_tunnus), ]
+
+
+# Näytetään keskiarvo vain yhdellä rivillä per asema (helpottamaan ihmislukijaa)
+# Ilmoitetaan myös ka:ssa käytettyjen putkien lkm
+koonti[["ka_N"]] <- NA # Alustetaan sarake keskiarvon putkien lkm:lle
+for (a in unique(na.omit(koonti$asema_tunnus))) {
+  # Kirjataan aseman keskiarvot aseman ylimmälle riville.
+  koonti[koonti$asema_tunnus %in% a,
+         c("asema_ka","asema_maxka","asema_minka","ka_N")][1, ] <-
+    koonti[koonti$asema_tunnus %in% a & !is.na(koonti$asema_ka),#1. rivi jolla dataa
+           c("asema_ka","asema_maxka","asema_minka","ka_N")][1, ]
+  # Pyyhitään muut rivit
+  koonti[koonti$asema_tunnus %in% a,
+         c("asema_ka","asema_maxka","asema_minka","ka_N")][-1, ] <- NA
+  # Käytetään äsken täytettyä riviä avuksi kun kirjataan mukana olevien putkien lkm
+  koonti[koonti$asema_tunnus %in% a & !is.na(koonti$asema_ka), "ka_N"] <-
+    sum(koonti[koonti$asema_tunnus == a & !is.na(koonti$Korkeus), "in_as_ka"])
+}
+rm(a)
 
 # Tallenna koonti tiedostoon (BOM varmistaa ääkköset)
 data.table::fwrite(koonti, file.path(D$output,"koonti.csv"),
