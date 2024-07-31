@@ -11,11 +11,10 @@ MUISTA SULKEA projektin käyttö (oikea yläkulma) kun alat tekemään muita asi
 
 ```{r valmistelut, message = FALSE}
 # Lataa kirjastot (kirjastojen asennus hoituu {renv} kautta)
+renv::restore()
 
 # Juurikansion määrittäminen muuttujaan
-if (!requireNamespace("here", quietly = TRUE)) {
-    stop("Package \"here\" must be installed to execute.", call. = FALSE)
-}
+if (!requireNamespace("here",quietly=T)) stop("Package \"here\" must be installed")
 here::i_am("main.Rmd")
 root <- here::here()
 
