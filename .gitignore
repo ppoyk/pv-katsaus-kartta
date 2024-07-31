@@ -5,8 +5,9 @@
 
 # Script output
 /output/
-main.nb.html
 *.html
+# Temporary knitting / rmarkdown rendering files
+/main_files/
 
 # History files
 .Rhistory
