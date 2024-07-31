@@ -320,11 +320,10 @@ kartat_plot <- function(lon, lat, value, col) {
 }
 # Määritä karttojen tallennuksen funktio (eli aseta default arvot)
 kartat_save <- function(plot, tall_nimi,
-                        height = 22, width = 12,  units = "in", dpi = 300,
-                        limitsize = FALSE) {
+                        hei = 22, wid = 12,  units = "in", dpi = 300,
+                        limsize = FALSE) {
   ggsave(tall_nimi, plot,
-         height = height, width = width, units = units, dpi = dpi,
-         limitsize = limitsize)
+         height=hei, width=wid, units=units, dpi=dpi, limitsize=limsize)
 }
 
 
@@ -332,7 +331,7 @@ kartat_save <- function(plot, tall_nimi,
 df <- read.csv(file.path(D$output, "koonti.csv"),
                header = TRUE, sep = ";", dec = ".",
                na.strings = c("NA", ""), stringsAsFactors = FALSE, 
-               colClasses = c("Aika"="POSIXct"))
+               colClasses = c("Aika"="POSIXct", "asema_tunnus"="character"))
 # Muutetaan csv:stä luettu kokoluokka oikein factoriksi
 df$pvalue_kokoluokka <- factor(df$pvalue_kokoluokka) |> relevel("Pieni")
 
