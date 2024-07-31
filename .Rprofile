@@ -1,2 +1,4 @@
 source("renv/activate.R")
-source(file.path(Sys.getenv("R_USER"),".RProfile"))
+if (file.exists(file.path(Sys.getenv("R_USER"),".RProfile")))
+    source(file.path(Sys.getenv("R_USER"),".RProfile"))
+
