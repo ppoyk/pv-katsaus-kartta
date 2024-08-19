@@ -295,18 +295,22 @@ map_fin <- ggplot(data = world) + geom_sf() +
 rm(world)
 
 # Määritä kartan plottauksen ja tallennukset vakiofunktiot
+# (Ensin määritetään käytettävät värit)
+palette <- c("1"="red", "2"="brown4", "3"="darkgoldenrod",
+          "4"="dodgerblue2", "5"="blue", "6"="darkolivegreen", "7"="darkgreen")
+          
 kartat_plot <- function(lon, lat, value, col) {
   input <- data.frame("lon"=lon, "lat"=lat, "value"=value, "col"=col)
   leg_size <- 16
   
   map_fin + # Plot on top of the map
   geom_text_repel(data = input,
-                  aes(x = lon, y = lat, colour = col),
+                  aes(x = lon, y = lat, colour = as.factor(col)),
                   label = value,
                   max.overlaps = Inf, min.segment.length = Inf,
                   force = 0.28, position = position_jitter()) +
   scale_colour_manual(
-    values = cols,
+    values = palette,
     guide = guide_legend("Tilanne",reverse=T,
                          override.aes=list(size=leg_size))) +
   # guides(shape = guide_legend(override.aes=list(size=leg_size))) +
@@ -331,134 +335,102 @@ df <- read.csv(file.path(D$output, "koonti.csv"),
                header = TRUE, sep = ";", dec = ".",
                na.strings = c("NA", ""), stringsAsFactors = FALSE, 
                colClasses = c("Aika"="POSIXct", "asema_tunnus"="character"))
+# Poistetaan virheelliset rivit
+df <- df[!is.na(df$ref_ka_delta), ]
+
 # Muutetaan csv:stä luettu kokoluokka oikein factoriksi
 df$pvalue_kokoluokka <- factor(df$pvalue_kokoluokka) |> relevel("Pieni")
 
-# Poistetaan virheelliset rivit
-df <- koonti
-df <- df[!is.na(df$Korkeus...ka), ]
-
 # Koordinaattien korjaus ja muokkaus oikeaan muotoon + pv_korkeuden muuntaminen senttimetreiksi
-df$Korkeus...ka <- as.numeric(df$Korkeus...ka) * 100
-df$Korkeus...ka <- round(as.numeric(df$Korkeus...ka), digits = 1)
-df$KoordErLong <- as.numeric(df$KoordErLong)
-df$KoordErLat <- as.numeric(df$KoordErLat)
+df$ref_ka_delta <- round(df$ref_ka_delta * 100, digits = 1)
 
-# Varmistetaan, että R-käsittelee numeroina ja plottauksen värien rajojen laskenta
-df$Ka <- as.numeric(df$Ka)
-df$Max <- as.numeric(df$Max)
-df$Min <- as.numeric(df$Min)
-df$Korkeus <- as.numeric(df$Korkeus)
-df$leik_y <- (df$Max - df$Ka) * 0.5 + df$Ka
-df$leik_a <- (df$Ka - df$Min) * 0.5 + df$Min
-df$leik_ak <- (df$Ka - df$Min) * 0.9 + df$Min
-df$leik_yk <- (df$Max - df$Ka) * 0.1 + df$Ka
-df$color <- 0
 
-for (i in 1:nrow(df)) {
-  if (df[i, "Korkeus"] < df[i, "Min"]) {
-    df[i, "color"] <- 1
-  } else if (df[i, "Korkeus"] >= df[i, "Min"] & df[i, "Korkeus"] < df[i, "leik_a"]) {
-    df[i, "color"] <- 2
-  } else if (df[i, "Korkeus"] >= df[i, "leik_a"] & df[i, "Korkeus"] < df[i, "leik_ak"]) {
-    df[i, "color"] <- 3
-  } else if (df[i, "Korkeus"] >= df[i, "leik_ak"] & df[i, "Korkeus"] < df[i, "leik_yk"]) {
-    df[i, "color"] <- 4
-  } else if (df[i, "Korkeus"] >= df[i, "leik_yk"] & df[i, "Korkeus"] < df[i, "leik_y"]) {
-    df[i, "color"] <- 5
-  } else if (df[i, "Korkeus"] >= df[i, "leik_y"] & df[i, "Korkeus"] < df[i, "Max"]) {
-    df[i, "color"] <- 6
-  } else {
-    df[i, "color"] <- 7
-  }
-}
+# Plottauksen värien rajojen laskenta (putkikohtaisesti)
+df[["y_ka_50p"]] <- df$ref_ka + 0.5 * (df$ref_max - df$ref_ka) 
+df[["y_ka_10p"]] <- df$ref_ka + 0.1 * (df$ref_max - df$ref_ka) 
+df[["a_ka_50p"]] <- df$ref_ka + 0.5 * (df$ref_min - df$ref_ka) 
+df[["a_ka_10p"]] <- df$ref_ka + 0.1 * (df$ref_min - df$ref_ka)
+
+# Ajetaan värit sen mukaan, mihin rejojen väliin nykyinen korkeusarvo osuu 
+df[["color"]] <- NA # Alustetaan sarake väreille
+df[with(df, Korkeus < ref_min)                       , "color"] <- 1
+df[with(df, Korkeus >= ref_min  & Korkeus < a_ka_50p), "color"] <- 2
+df[with(df, Korkeus >= a_ka_50p & Korkeus < a_ka_10p), "color"] <- 3
+df[with(df, Korkeus >= a_ka_10p & Korkeus < y_ka_10p), "color"] <- 4
+df[with(df, Korkeus >= y_ka_10p & Korkeus < y_ka_50p), "color"] <- 5
+df[with(df, Korkeus >= y_ka_50p & Korkeus < ref_max ), "color"] <- 6
+df[with(df, Korkeus >= ref_max)                      , "color"] <- 7
+stopifnot(all(!is.na(df$color)))
 
 # Poistetaan yli 2 metrin erotuksen asemat kuvasta
-df <- subset(df, abs(df$Korkeus...ka) < 400)
-
-# Tuodaan värit eri numeroille
-df$color <- as.factor(df$color)
-cols <- c("1"="red", "2"="brown4", "3"="darkgoldenrod",
-          "4"="dodgerblue2", "5"="blue", "6"="darkolivegreen", "7"="darkgreen")
+#df <- subset(df, abs(df$ref_ka_delta) < 400)
 
 
 # Aseta karttojen tallennuskansio
 kartat_path <- check_dir(D$output,"kartat", ensure = T)
 
 # Ensimmäisen kartan plottaus ja tallennus
-plot <- kartat_plot(df$KoordErLong, df$KoordErLat, df$Korkeus...ka, df$color)
+plot <- kartat_plot(df$KoordErLong, df$KoordErLat, df$ref_ka_delta, df$color)
 kartat_save(plot, file.path(kartat_path,"kartta_pv.png"))
 
 
 # Erotellaan pienet, keskik. ja suuret alueet. Kaikille erillinen plottaus
 df_suuri     <- df[df$pvalue_kokoluokka == "Suuri", ]
 plot <- kartat_plot(df_suuri$KoordErLong, df_suuri$KoordErLat,
-                    df_suuri$Korkeus...ka, df_suuri$color)
+                    df_suuri$ref_ka_delta, df_suuri$color)
 kartat_save(plot, file.path(kartat_path,"kartta_pv_suuri.png"))
 
 df_keskikoko <- df[df$pvalue_kokoluokka == "Keskikoko", ]
 plot <- kartat_plot(df_keskikoko$KoordErLong, df_keskikoko$KoordErLat,
-                    df_keskikoko$Korkeus...ka, df_keskikoko$color)
+                    df_keskikoko$ref_ka_delta, df_keskikoko$color)
 kartat_save(plot, file.path(kartat_path,"kartta_pv_keskikoko.png"))
 
 df_pieni     <- df[df$pvalue_kokoluokka == "Pieni", ]
 plot <- kartat_plot(df_pieni$KoordErLong, df_pieni$KoordErLat,
-                    df_pieni$Korkeus...ka, df_pieni$color)
+                    df_pieni$ref_ka_delta, df_pieni$color)
 kartat_save(plot, file.path(kartat_path,"kartta_pv_pieni.png"))
 
 
+# Piirretään toiset kartat, joissa värit määräytyvät poikkeaman cm perusteella
+# Määritä cm rajat, joiden mukaan poikkeamien värit määräytyvät
+high_cm    <- 30; low_cm    <- -30
+above_cm <- 10; below_cm <- -10
 
-df$leik_y <- 30
-df$leik_a <- -30
-df$leik_ak <- -10
-df$leik_yk <- 10
-df$color <- 0
-
-for (i in 1:nrow(df)) {
-  if (df[i, "Korkeus...ka"] < -50) {
-    df[i, "color"] <- 1
-  } else if (df[i, "Korkeus...ka"] >= -50 & df[i, "Korkeus...ka"] < df[i, "leik_a"]) {
-    df[i, "color"] <- 2
-  } else if (df[i, "Korkeus...ka"] >= df[i, "leik_a"] & df[i, "Korkeus...ka"] < df[i, "leik_ak"]) {
-    df[i, "color"] <- 3
-  } else if (df[i, "Korkeus...ka"] >= df[i, "leik_ak"] & df[i, "Korkeus...ka"] < df[i, "leik_yk"]) {
-    df[i, "color"] <- 4
-  } else if (df[i, "Korkeus...ka"] >= df[i, "leik_yk"] & df[i, "Korkeus...ka"] < df[i, "leik_y"]) {
-    df[i, "color"] <- 5
-  } else if (df[i, "Korkeus...ka"] >= df[i, "leik_y"] & df[i, "Korkeus...ka"] < 50) {
-    df[i, "color"] <- 6
-  } else {
-    df[i, "color"] <- 7
-  }
-}
+df[["color_cm"]] <- NA # Alustetaan sarake väreille
+df[df$ref_ka_delta < -50                                   , "color_cm"] <- 1
+df[df$ref_ka_delta >= -50 & df$ref_ka_delta < low_cm       , "color_cm"] <- 2
+df[df$ref_ka_delta >= low_cm & df$ref_ka_delta < below_cm  , "color_cm"] <- 3
+df[df$ref_ka_delta >= below_cm & df$ref_ka_delta < above_cm, "color_cm"] <- 4
+df[df$ref_ka_delta >= above_cm & df$ref_ka_delta < high_cm , "color_cm"] <- 5
+df[df$ref_ka_delta >= high_cm & df$ref_ka_delta < 50       , "color_cm"] <- 6
+df[df$ref_ka_delta >= 50                                   , "color_cm"] <- 7
+stopifnot(all(!is.na(df$color_cm)))
+rm(high_cm, above_cm, below_cm, low_cm)
 
 # Poistetaan yli 2 metrin erotuksen asemat kuvasta
-df <- subset(df, abs(df$Korkeus...ka) < 400)
+#df <- subset(df, abs(df$ref_ka_delta) < 400)
 
-# Tuodaan värit eri numeroille
-df$color <- as.factor(df$color)
 
-# Ensimmäisen kartan plottaus ja tallennus
-plot <- kartat_plot(df$KoordErLong, df$KoordErLat, df$Korkeus...ka, df$color)
+# Ensimmäisen senttimetrikartan plottaus ja tallennus
+plot <- kartat_plot(df$KoordErLong, df$KoordErLat, df$ref_ka_delta, df$color_cm)
 kartat_save(plot, file.path(kartat_path,"kartta_pv_cm.png"))
 
 
 # Erotellaan pienet, keskik. ja suuret alueet. Kaikille erillinen plottaus
 df_suuri     <- df[df$pvalue_kokoluokka == "Suuri", ]
 plot <- kartat_plot(df_suuri$KoordErLong, df_suuri$KoordErLat,
-                    df_suuri$Korkeus...ka, df_suuri$color)
+                    df_suuri$ref_ka_delta, df_suuri$color_cm)
 kartat_save(plot, file.path(kartat_path,"kartta_pv_suuri_cm.png"))
 
 df_keskikoko <- df[df$pvalue_kokoluokka == "Keskikoko", ]
 plot <- kartat_plot(df_keskikoko$KoordErLong, df_keskikoko$KoordErLat,
-                    df_keskikoko$Korkeus...ka, df_keskikoko$color)
+                    df_keskikoko$ref_ka_delta, df_keskikoko$color_cm)
 kartat_save(plot, file.path(kartat_path,"kartta_pv_keskikoko_cm.png"))
 
 df_pieni     <- df[df$pvalue_kokoluokka == "Pieni", ]
 plot <- kartat_plot(df_pieni$KoordErLong, df_pieni$KoordErLat,
-                    df_pieni$Korkeus...ka, df_pieni$color)
+                    df_pieni$ref_ka_delta, df_pieni$color_cm)
 kartat_save(plot, file.path(kartat_path,"kartta_pv_pieni_cm.png"))
-
 
 ```
 
