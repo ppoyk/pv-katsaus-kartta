@@ -218,7 +218,7 @@ koonti$Aika <- as.POSIXct(koonti$Aika,tz="UTC")#UTC=mahd kloajat säilyvät (ei+
 
 ```{r suodata-ja-luo-koonti}
 # Määritä mitkä paikat tulevat mukaan aseman keskiarvojen laskentaan
-koonti <- koonti2
+
 # Luo loogiset vektorit eri testeille, mitkä jätetään POIS laskennasta
 
 # Onko viimeisin mittaus yli 3 vkoa vanha tai NA?
