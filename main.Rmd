@@ -26,7 +26,9 @@ D <- list(
 
 # Asetetaan tulosten tallennuskansio ajoargumentin "verkkolevytallennus" mukaan
 if ("verkkolevytallennus" %in% commandArgs() && dir.exists("M:/")) {
-  D[["output"]] <- file.path(readLines(file.path(D$secrets,"output_verkkolevy.txt")))
+  nwd_path <- readLines(file.path(D$secrets,"output_verkkolevy.txt")
+  dir.create(nwd_path)
+  D[["output"]] <- nwd_path; rm(nwd_path)
 } else {
   D[["output"]] <- file.path(root, "output")
 }
@@ -59,7 +61,8 @@ if (!"rnaturalearthhires" %in% installed.packages()) {
 writeLines(c("Kuvaajien luonnin skripti aloitettu:",
              paste(weekdays(Sys.time(), abbreviate=F), as.character(Sys.time()))),
              con = file.path(D$output, "KUVIEN_SKRIPTI_ALOITETTU.txt"))
-
+writeLines(c("KANSION KOKO SISÄLTÖ VOI POISTUA!","Älä tallenna kansioon mitään"),
+           con = file.path(D$output, "ÄLÄ_TALLENNA_KANSIOON_MITÄÄN.txt"))
 ```
 
 
