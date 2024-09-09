@@ -6,10 +6,13 @@
 pkgs <- c("this.path", "rmarkdown", "renv")
 for (p in pkgs[!(pkgs %in% installed.packages())]) utils::install.packages(p)
 
+
 # Define required variables:
 # ...for rmarkdown to function:
-if (is.null(Sys.getenv("RSTUDIO_PANDOC")) || length(Sys.getenv("RSTUDIO_PANDOC")) == 0)
-  Sys.setenv(RSTUDIO_PANDOC = rmarkdown::find_pandoc()$dir)
+if (is.null(Sys.getenv("RSTUDIO_PANDOC")) ||
+    length(Sys.getenv("RSTUDIO_PANDOC")) <= 1) {
+  Sys.setenv(RSTUDIO_PANDOC="D:/ProgramFiles/RStudio/resources/app/bin/quarto/bin/tools")
+}
 # ...to ensure correct project dir:
 proj <- this.path::this.dir()
 
@@ -25,3 +28,4 @@ renv::run(script = {
   rmarkdown::render(
     file.path(proj, "main.Rmd"))},
   project = proj)
+

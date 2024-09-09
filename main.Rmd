@@ -26,7 +26,7 @@ D <- list(
 
 # Asetetaan tulosten tallennuskansio ajoargumentin "verkkolevytallennus" mukaan
 if ("verkkolevytallennus" %in% commandArgs() && dir.exists("M:/")) {
-  nwd_path <- readLines(file.path(D$secrets,"output_verkkolevy.txt")
+  nwd_path <- readLines(file.path(D$secrets,"output_verkkolevy.txt"))
   dir.create(nwd_path)
   D[["output"]] <- nwd_path; rm(nwd_path)
 } else {
